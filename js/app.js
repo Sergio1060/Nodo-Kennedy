@@ -130,10 +130,16 @@ function onData(rows, sourceLabel){
     };
   }).filter(r => r.fecha);
 
+  // El proyecto arranco oficialmente el 19 de mayo de 2026; servicios anteriores
+  // (pilotaje/pre-lanzamiento) quedan fuera del BI para no mezclar periodos.
+  const antesDelArranque = RAW.filter(r => r.fecha < PROJECT_START).length;
+  RAW = RAW.filter(r => r.fecha >= PROJECT_START);
+
   document.getElementById('emptyState').style.display='none';
   document.getElementById('dashboard').style.display='block';
   document.getElementById('ctxBar').style.display='flex';
-  setStatus(`✓ ${RAW.length.toLocaleString('es-CO')} servicios cargados — ${sourceLabel}`, 'ok');
+  setStatus(`✓ ${RAW.length.toLocaleString('es-CO')} servicios cargados — ${sourceLabel}` +
+    (antesDelArranque ? ` (se excluyeron ${antesDelArranque} previos al 19 may, pre-lanzamiento)` : ''), 'ok');
 
   const now = new Date();
   document.getElementById('updatedLabel').textContent =
@@ -210,7 +216,7 @@ function renderKPIs(){
   const avgKm = n ? FILTERED.reduce((a,r)=>a+r.km,0)/n : 0;
   const avgValorDecl = n ? FILTERED.reduce((a,r)=>a+r.valorDeclarado,0)/n : 0;
   const medianTiempoEntrega = medianBy(fin, 'minFinalizacion');
-  const trabajadoresActivos = new Set(FILTERED.map(r=>r.trabajador)).size;
+  const trabajadoresActivos = new Set(FILTERED.filter(r=>r.trabajador!=='Sin asignar').map(r=>r.trabajador)).size;
   // Mediana, no promedio: un pequeno % de servicios con valor muy alto (mensajeria
   // con valor declarado alto) y otro % en $0 (cancelados/sin cobro) distorsionan
   // el promedio simple muy por encima de la tarifa real pactada.
@@ -298,7 +304,7 @@ function renderCharts(){
 
   // Top 20 Quickers por volumen historico (todo el proyecto, no aplica filtros de fecha/estado)
   const trabCount = {};
-  RAW.forEach(r=>{trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
+  RAW.forEach(r=>{if(r.trabajador!=='Sin asignar') trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
   const topTrabSorted = Object.entries(trabCount).sort((a,b)=>b[1]-a[1]).slice(0,20);
   const topTrab = trabOrientation==='h' ? [...topTrabSorted].reverse() : topTrabSorted;
   mk('chTrabajadores',{type:'bar',data:{labels:topTrab.map(e=>e[0]),datasets:[{data:topTrab.map(e=>e[1]),
@@ -458,7 +464,7 @@ function renderContext(){
     `${fmtDate(fechas[0]).split(' ')[0]} → ${fmtDate(fechas[fechas.length-1]).split(' ')[0]}`;
 
   const trabCount = {};
-  FILTERED.forEach(r=>{trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
+  FILTERED.forEach(r=>{if(r.trabajador!=='Sin asignar') trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
   const topTrab = Object.entries(trabCount).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('ctxTrabajador').textContent = topTrab ? `${topTrab[0]} (${topTrab[1]})` : '-';
 }
