@@ -1,13 +1,27 @@
-# BI Colsubsidio · Nodo Kennedy (Quick Go)
+# BI Colsubsidio · Nodo Kennedy (Quick Go) — repositorio privado (data completa)
 
 Dashboard de indicadores operativos para el nodo Kennedy de Colsubsidio. Es un sitio
-100% estático (HTML/CSS/JS) pensado para publicarse en **GitHub Pages**, con colores
-corporativos de Quick (navy + naranja) tomados del informe original
-`Colsubsidio_Kennedy_Presentacion 34.html`.
+100% estático (HTML/CSS/JS), con colores corporativos de Quick (navy + naranja)
+tomados del informe original `Colsubsidio_Kennedy_Presentacion 34.html`.
 
 > ⚠️ **Datos sensibles**: `data/data.csv` contiene nombres, teléfonos, correos y
 > cédulas de trabajadores y del contacto en Colsubsidio. Este repositorio debe
-> mantenerse **privado**. No lo hagas público sin anonimizar antes esas columnas.
+> mantenerse **privado** siempre.
+
+## Dos repositorios, un solo dashboard
+
+Como GitHub Pages en cuenta gratuita no permite repos privados, este proyecto vive
+en dos repositorios:
+
+- **Este repo (privado)** — data completa, fuente de verdad. Aquí se actualiza la
+  data cruda cada vez que llega un nuevo export del sistema.
+- **`bi-colsubsidio-public`** — mismo dashboard, pero con `data/data.csv`
+  **anonimizado** (sin nombres, teléfonos, correos ni cédulas; trabajadores
+  reemplazados por códigos tipo `Trabajador 001`). Ese es el repo público con
+  GitHub Pages activado.
+
+El script `scripts/anonymize.cjs` (en este repo) genera la versión pública a partir
+de la data completa — ver instrucciones abajo.
 
 ## Estructura
 
@@ -30,7 +44,7 @@ el nuevo export del sistema (mismo formato, separado por `;`). El dashboard reca
 todo al instante, pero **solo en tu navegador** — no cambia lo que ven los demás.
 Útil para revisar un archivo antes de publicarlo.
 
-### 2. Actualización permanente (lo que ve todo el equipo)
+### 2. Actualización permanente en este repo privado (respaldo con data completa)
 1. Exporta la data del sistema como CSV (mismo formato de columnas que el actual).
 2. Reemplaza el archivo `data/data.csv` de este repositorio con el nuevo export
    (debe conservar el nombre `data.csv` y el separador `;`).
@@ -40,10 +54,21 @@ todo al instante, pero **solo en tu navegador** — no cambia lo que ven los dem
    git commit -m "Actualizar data del nodo Kennedy (dd-mm-aaaa)"
    git push
    ```
-4. GitHub Pages se actualiza solo en 1–2 minutos. No requiere ningún build ni paso adicional.
 
-El dashboard siempre carga `data/data.csv` automáticamente al abrir la página — no hace
-falta editar nada del código para que refleje la data nueva.
+### 3. Publicar esa actualización en el dashboard público (el que ve el equipo)
+1. En este repo, corre:
+   ```bash
+   node scripts/anonymize.cjs
+   ```
+   Esto genera `data/data.public.csv` (sin datos personales, trabajadores anonimizados).
+2. Copia ese archivo a la carpeta `bi-colsubsidio-public` como `data/data.csv`.
+3. Desde `bi-colsubsidio-public`, sube el cambio:
+   ```bash
+   git add data/data.csv
+   git commit -m "Actualizar data anonimizada del nodo Kennedy (dd-mm-aaaa)"
+   git push
+   ```
+4. GitHub Pages se actualiza solo en 1–2 minutos.
 
 ## Previsualizar en local antes de publicar
 
@@ -56,23 +81,10 @@ node _devserver.cjs 5173
 
 Y abre `http://localhost:5173` en el navegador.
 
-## Publicar en GitHub Pages
+## GitHub Pages
 
-1. Crea el repositorio en GitHub (⚠️ **privado**, dado que contiene datos personales).
-2. Súbelo:
-   ```bash
-   git remote add origin <URL-del-repo>
-   git branch -M main
-   git push -u origin main
-   ```
-3. En GitHub → *Settings → Pages* → *Source*: rama `main`, carpeta `/ (root)`.
-4. La URL quedará como `https://<usuario>.github.io/<repo>/`.
-
-> Nota: con el repo **privado**, GitHub Pages solo es visible para quienes tengan
-> acceso al repositorio (requiere plan GitHub Pro/Team/Enterprise para Pages privado
-> en cuentas personales, o cualquier plan si es una organización). Si tu cuenta no
-> tiene Pages disponible en modo privado, la alternativa es compartir el repo con las
-> personas necesarias y que cada una lo corra localmente con `_devserver.cjs`.
+Este repo **no** usa GitHub Pages (debe quedar privado). El dashboard con URL
+pública vive en el repo `bi-colsubsidio-public` — ver su propio README.
 
 ## Indicadores incluidos
 
