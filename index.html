@@ -44,11 +44,13 @@
     </select>
   </div>
   <div class="ffield">
-    <label>Tipo de servicio</label>
-    <select id="fTipo">
+    <label>Rango de km</label>
+    <select id="fKm">
       <option value="">Todos</option>
-      <option value="Domicilio">Domicilio</option>
-      <option value="Mensajeria">Mensajería</option>
+      <option value="0">0–4 km</option>
+      <option value="1">5–10 km</option>
+      <option value="2">11–20 km</option>
+      <option value="3">21 km+</option>
     </select>
   </div>
   <div class="ffield">
@@ -67,7 +69,6 @@
 <div class="ctxbar" id="ctxBar" style="display:none;">
   <span class="ctxi"><span class="ico">📅</span>Periodo: <b id="ctxPeriodo">-</b></span>
   <span class="ctxi"><span class="ico">🏆</span>Trabajador líder: <b id="ctxTrabajador">-</b></span>
-  <span class="ctxi"><span class="ico">💳</span>Método líder: <b id="ctxPago">-</b></span>
 </div>
 
 <main class="sb" id="dashboard" style="display:none;">
@@ -98,19 +99,9 @@
     </div>
   </div>
 
-  <div class="c3">
-    <div class="cc">
-      <div class="ct"><span class="ct-l"><span class="dot"></span>Tipo de servicio</span></div>
-      <div class="cw"><canvas id="chTipo"></canvas></div>
-    </div>
-    <div class="cc">
-      <div class="ct"><span class="ct-l"><span class="dot"></span>Método de pago</span></div>
-      <div class="cw"><canvas id="chPago"></canvas></div>
-    </div>
-    <div class="cc">
-      <div class="ct"><span class="ct-l"><span class="dot"></span>Distancia por rango (km)</span></div>
-      <div class="cw"><canvas id="chKm"></canvas></div>
-    </div>
+  <div class="stl">Distancia por rango (km)</div>
+  <div class="cc">
+    <div class="cw tall"><canvas id="chKm"></canvas></div>
   </div>
 
   <div class="stl">Detalle por rango de distancia</div>
@@ -159,31 +150,6 @@
   <div class="stl">Ingresos por semana</div>
   <div class="cc">
     <div class="cw sm"><canvas id="chIngresosSemana"></canvas></div>
-  </div>
-
-  <div class="stl">Detalle de servicios</div>
-  <div class="cc">
-    <div class="tbl-wrap">
-      <table class="dt" id="detailTable">
-        <thead>
-          <tr>
-            <th data-k="ID Servicio">ID</th>
-            <th data-k="Fecha de creación">Fecha</th>
-            <th data-k="Nombre Trabajador">Trabajador</th>
-            <th data-k="Tipo de Servicio">Tipo</th>
-            <th data-k="Total (Km)">Km</th>
-            <th data-k="Precio Total">Precio total</th>
-            <th data-k="Estado">Estado</th>
-          </tr>
-        </thead>
-        <tbody id="detailBody"></tbody>
-      </table>
-    </div>
-    <div class="pager">
-      <span id="pagerInfo"></span>
-      <button id="pagerPrev">‹ Anterior</button>
-      <button id="pagerNext">Siguiente ›</button>
-    </div>
   </div>
 
 </main>

@@ -2,15 +2,11 @@
 
 const COLORS = {navy:'#0B2A4A',blue:'#2E6FCE',blueL:'#6FA8E0',blueXl:'#AFD0F0',
   gold:'#F0A500',red:'#E4572E',green:'#1FAE6E',muted:'#6B7A90'};
-const BLUES = ['#0B2A4A','#1E4E82','#2E6FCE','#5C93DE','#8EC1EA','#B7D9F4'];
 let trabOrientation = 'v';
 
 let RAW = [];        // cleaned rows straight from CSV
 let FILTERED = [];   // rows after applying filters
 let charts = {};
-let sortKey = 'Fecha de creación', sortDir = -1;
-let page = 1;
-const PAGE_SIZE = 50;
 
 /* ---------------- Parsing helpers ---------------- */
 // All numeric fields in this export use a plain dot as decimal separator
@@ -109,14 +105,12 @@ function onData(rows, sourceLabel){
       id: r['ID Servicio'],
       fecha,
       estado: (r['Estado']||'').trim(),
-      tipo: (r['Tipo de Servicio']||'').trim(),
       trabajador: (r['Nombre Trabajador']||'').trim() || 'Sin asignar',
       precioTotal: money(r['Precio Total']),
       ganancias: money(r['Ganancias']),
       valorDeclarado: money(r['Valor Declarado']),
       km: num(r['Total (Km)']),
       paradas: num(r['Cantidad Paradas']),
-      metodoPago: (r['Método de Pago']||'Sin dato').trim() || 'Sin dato',
       minAsignado: num(r['Minutos Tiempo Asignado']),
       minPrimeraParada: num(r['Minutos Tiempo Primera Parada']),
       minFinalizacion: num(r['Minutos Tiempo Finalización']),
@@ -178,18 +172,21 @@ function applyFilters(){
   const desde = document.getElementById('fDesde').value ? new Date(document.getElementById('fDesde').value+'T00:00:00') : null;
   const hasta = document.getElementById('fHasta').value ? new Date(document.getElementById('fHasta').value+'T23:59:59') : null;
   const estado = document.getElementById('fEstado').value;
-  const tipo = document.getElementById('fTipo').value;
+  const kmRange = document.getElementById('fKm').value;
   const trabajador = document.getElementById('fTrabajador').value.trim().toLowerCase();
+  const kmBuckets = [[0,4],[5,10],[11,20],[21,Infinity]];
 
   FILTERED = RAW.filter(r=>{
     if(desde && r.fecha < desde) return false;
     if(hasta && r.fecha > hasta) return false;
     if(estado && r.estado !== estado) return false;
-    if(tipo && r.tipo !== tipo) return false;
+    if(kmRange!==''){
+      const [min,max] = kmBuckets[+kmRange];
+      if(r.km<min || r.km>max) return false;
+    }
     if(trabajador && !r.trabajador.toLowerCase().includes(trabajador)) return false;
     return true;
   });
-  page = 1;
   renderAll();
 }
 
@@ -225,14 +222,22 @@ Chart.defaults.color = COLORS.muted;
 Chart.defaults.font.family = "'Barlow',sans-serif";
 Chart.defaults.borderColor = 'rgba(11,42,74,.08)';
 
+// Tooltip legible en todas las graficas: fondo solido, texto claro, siempre visible al pasar el cursor.
+const TOOLTIP_BASE = {enabled:true, backgroundColor:'rgba(11,42,74,.96)', titleColor:'#fff', bodyColor:'#fff',
+  padding:10, cornerRadius:8, titleFont:{family:"'Barlow Condensed',sans-serif",weight:'700',size:12},
+  bodyFont:{family:"'Barlow',sans-serif",size:12}, displayColors:true};
+
 function renderCharts(){
   // Evolución por día
   const byDay = {};
   FILTERED.forEach(r=>{const k=dayKey(r.fecha); byDay[k]=(byDay[k]||0)+1;});
   const days = Object.keys(byDay).sort();
   mk('chEvol',{type:'line',data:{labels:days,datasets:[{label:'Servicios',data:days.map(d=>byDay[d]),
-    borderColor:COLORS.blue,backgroundColor:'rgba(46,111,206,.12)',fill:true,tension:.3,pointRadius:0}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    borderColor:COLORS.blue,backgroundColor:'rgba(46,111,206,.12)',fill:true,tension:.3,
+    pointRadius:0,pointHoverRadius:5,pointHitRadius:12,pointBackgroundColor:COLORS.blue}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...TOOLTIP_BASE}},
       scales:{x:{ticks:{maxTicksLimit:10}},y:{beginAtZero:true,grid:{color:'rgba(11,42,74,.06)'}}}}});
 
   // Estado
@@ -242,23 +247,13 @@ function renderCharts(){
   const estadoLabels=['Finalizado','Cancelado']; const estadoData=[fin,canc]; const estadoColors=[COLORS.green,COLORS.red];
   if(otros>0){estadoLabels.push('Otro');estadoData.push(otros);estadoColors.push(COLORS.blueXl);}
   mk('chEstado',{type:'doughnut',data:{labels:estadoLabels,datasets:[{data:estadoData,backgroundColor:estadoColors,borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12}}}}});
-
-  // Tipo de servicio
-  const tipoCount = {};
-  FILTERED.forEach(r=>{const t=r.tipo||'Sin dato'; tipoCount[t]=(tipoCount[t]||0)+1;});
-  mk('chTipo',{type:'doughnut',data:{labels:Object.keys(tipoCount),datasets:[{data:Object.values(tipoCount),
-    backgroundColor:BLUES,borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}}}}});
-
-  // Método de pago
-  const pagoCount = {};
-  FILTERED.forEach(r=>{pagoCount[r.metodoPago]=(pagoCount[r.metodoPago]||0)+1;});
-  const pagoEntries = Object.entries(pagoCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  mk('chPago',{type:'bar',data:{labels:pagoEntries.map(e=>e[0]),datasets:[{data:pagoEntries.map(e=>e[1]),
-    backgroundColor:pagoEntries.map((_,i)=>BLUES[i%BLUES.length]),borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
-      scales:{x:{beginAtZero:true}}}});
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12}},
+        tooltip:{...TOOLTIP_BASE,callbacks:{label:c=>{
+          const tot=c.dataset.data.reduce((a,b)=>a+b,0);
+          const pct=tot?(c.parsed/tot*100).toFixed(1):0;
+          return `${c.label}: ${c.parsed.toLocaleString('es-CO')} (${pct}%)`;
+        }}}}}});
 
   // Rango de km (con porcentajes) + tabla de detalle
   const km = kmStats();
@@ -267,7 +262,11 @@ function renderCharts(){
     labels:km.map((k,i)=>`${k.label} (${k.pct.toFixed(1)}%)`),
     datasets:[{data:km.map(k=>k.n),backgroundColor:kmColors,borderWidth:0,hoverOffset:6}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'56%',
-      plugins:{legend:{position:'bottom',labels:{boxWidth:9,padding:8,font:{size:10.5}}}}}});
+      plugins:{legend:{position:'bottom',labels:{boxWidth:9,padding:8,font:{size:10.5}}},
+        tooltip:{...TOOLTIP_BASE,callbacks:{label:c=>{
+          const k2=km[c.dataIndex];
+          return `${k2.label}: ${k2.n.toLocaleString('es-CO')} (${k2.pct.toFixed(1)}%)`;
+        }}}}}});
   renderKmTable(km, kmColors);
 
   // Top 20 Quickers por volumen historico (todo el proyecto, no aplica filtros de fecha/estado)
@@ -278,7 +277,7 @@ function renderCharts(){
   mk('chTrabajadores',{type:'bar',data:{labels:topTrab.map(e=>e[0]),datasets:[{data:topTrab.map(e=>e[1]),
     backgroundColor:COLORS.blue,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,indexAxis:trabOrientation==='h'?'y':'x',
-      plugins:{legend:{display:false}},
+      plugins:{legend:{display:false},tooltip:{...TOOLTIP_BASE}},
       scales:trabOrientation==='h'?{x:{beginAtZero:true}}:{y:{beginAtZero:true},x:{ticks:{maxRotation:60,minRotation:60}}}}});
 
   // Motivos de cancelación
@@ -290,7 +289,8 @@ function renderCharts(){
   const topCanc = Object.entries(cancCount).sort((a,b)=>b[1]-a[1]).slice(0,8).reverse();
   mk('chCancel',{type:'bar',data:{labels:topCanc.map(e=>e[0]),datasets:[{data:topCanc.map(e=>e[1]),
     backgroundColor:COLORS.red,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{...TOOLTIP_BASE}},
       scales:{x:{beginAtZero:true}}}});
 
   // Ingresos por semana (semana de proyecto: lunes-domingo, S1 arranca 19 mayo)
@@ -303,8 +303,9 @@ function renderCharts(){
   const sems = Object.keys(bySem).sort((a,b)=>semOrder[a]-semOrder[b]);
   mk('chIngresosSemana',{type:'bar',data:{labels:sems,datasets:[{data:sems.map(s=>bySem[s]),
     backgroundColor:COLORS.navy,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:c=>fmtCOP(c.parsed.y)}}},scales:{y:{ticks:{callback:v=>fmtCOPk(v)}}}}});
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+      tooltip:{...TOOLTIP_BASE,callbacks:{label:c=>fmtCOP(c.parsed.y)}}},scales:{y:{ticks:{callback:v=>fmtCOPk(v)}}}}});
 }
 
 /* ---------------- KM breakdown ---------------- */
@@ -382,49 +383,10 @@ function renderFlow(){
     </div>`).join('');
 }
 
-/* ---------------- Table ---------------- */
-function renderTable(){
-  const sorted = [...FILTERED].sort((a,b)=>{
-    let av, bv;
-    switch(sortKey){
-      case 'ID Servicio': av=+a.id; bv=+b.id; break;
-      case 'Fecha de creación': av=a.fecha; bv=b.fecha; break;
-      case 'Nombre Trabajador': av=a.trabajador; bv=b.trabajador; break;
-      case 'Tipo de Servicio': av=a.tipo; bv=b.tipo; break;
-      case 'Total (Km)': av=a.km; bv=b.km; break;
-      case 'Precio Total': av=a.precioTotal; bv=b.precioTotal; break;
-      case 'Estado': av=a.estado; bv=b.estado; break;
-      default: av=a.fecha; bv=b.fecha;
-    }
-    if(av<bv) return -1*sortDir; if(av>bv) return 1*sortDir; return 0;
-  });
-  const totalPages = Math.max(1, Math.ceil(sorted.length/PAGE_SIZE));
-  page = Math.min(page, totalPages);
-  const start = (page-1)*PAGE_SIZE;
-  const rows = sorted.slice(start, start+PAGE_SIZE);
-
-  document.getElementById('detailBody').innerHTML = rows.map(r=>`
-    <tr>
-      <td>${r.id}</td>
-      <td>${fmtDate(r.fecha)}</td>
-      <td>${r.trabajador}</td>
-      <td>${r.tipo||'-'}</td>
-      <td>${r.km.toFixed(1)}</td>
-      <td>${fmtCOP(r.precioTotal)}</td>
-      <td><span class="bd ${r.estado==='Finalizado'?'gr':r.estado==='Cancelado'?'re':'tl'}">${r.estado||'-'}</span></td>
-    </tr>`).join('');
-
-  document.getElementById('pagerInfo').textContent =
-    `${sorted.length.toLocaleString('es-CO')} servicios · página ${page} de ${totalPages}`;
-  document.getElementById('pagerPrev').disabled = page<=1;
-  document.getElementById('pagerNext').disabled = page>=totalPages;
-}
-
 function renderContext(){
   if(!FILTERED.length){
     document.getElementById('ctxPeriodo').textContent = 'Sin datos';
     document.getElementById('ctxTrabajador').textContent = '-';
-    document.getElementById('ctxPago').textContent = '-';
     return;
   }
   const fechas = FILTERED.map(r=>r.fecha).sort((a,b)=>a-b);
@@ -435,11 +397,6 @@ function renderContext(){
   FILTERED.forEach(r=>{trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
   const topTrab = Object.entries(trabCount).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('ctxTrabajador').textContent = topTrab ? `${topTrab[0]} (${topTrab[1]})` : '-';
-
-  const pagoCount = {};
-  FILTERED.forEach(r=>{pagoCount[r.metodoPago]=(pagoCount[r.metodoPago]||0)+1;});
-  const topPago = Object.entries(pagoCount).sort((a,b)=>b[1]-a[1])[0];
-  document.getElementById('ctxPago').textContent = topPago ? topPago[0] : '-';
 }
 
 function renderAll(){
@@ -447,20 +404,19 @@ function renderAll(){
   renderContext();
   renderCharts();
   renderFlow();
-  renderTable();
 }
 
 /* ---------------- Wire up UI ---------------- */
 document.getElementById('fMes').addEventListener('change', applyMonthFilter);
 document.getElementById('fEstado').addEventListener('change', applyFilters);
-document.getElementById('fTipo').addEventListener('change', applyFilters);
+document.getElementById('fKm').addEventListener('change', applyFilters);
 document.getElementById('fTrabajador').addEventListener('input', ()=>{
   clearTimeout(window._tdeb); window._tdeb=setTimeout(applyFilters,250);
 });
 document.getElementById('btnClear').addEventListener('click', ()=>{
   document.getElementById('fMes').value='';
   document.getElementById('fEstado').value='';
-  document.getElementById('fTipo').value='';
+  document.getElementById('fKm').value='';
   document.getElementById('fTrabajador').value='';
   if(RAW.length){
     const fechas = RAW.map(r=>r.fecha).sort((a,b)=>a-b);
@@ -474,15 +430,6 @@ document.querySelectorAll('#trabToggle .tbtn').forEach(btn=>{
     trabOrientation = btn.dataset.o;
     document.querySelectorAll('#trabToggle .tbtn').forEach(b=>b.classList.toggle('active', b===btn));
     renderCharts();
-  });
-});
-document.getElementById('pagerPrev').addEventListener('click', ()=>{page--; renderTable();});
-document.getElementById('pagerNext').addEventListener('click', ()=>{page++; renderTable();});
-document.querySelectorAll('.dt th[data-k]').forEach(th=>{
-  th.addEventListener('click', ()=>{
-    const k = th.dataset.k;
-    if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir=-1;}
-    page=1; renderTable();
   });
 });
 document.getElementById('fileInput').addEventListener('change', e=>{
