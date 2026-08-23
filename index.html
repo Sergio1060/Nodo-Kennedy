@@ -28,13 +28,13 @@
 <div class="fbar">
   <span class="flabel">Filtrar</span>
   <div class="ffield">
-    <label>Desde</label>
-    <input type="date" id="fDesde">
+    <label>Mes</label>
+    <select id="fMes">
+      <option value="">Todos los meses</option>
+    </select>
   </div>
-  <div class="ffield">
-    <label>Hasta</label>
-    <input type="date" id="fHasta">
-  </div>
+  <input type="hidden" id="fDesde">
+  <input type="hidden" id="fHasta">
   <div class="ffield">
     <label>Estado</label>
     <select id="fEstado">
@@ -72,12 +72,10 @@
 
 <main class="sb" id="dashboard" style="display:none;">
 
-  <div class="kg">
+  <div class="kg" style="grid-template-columns:repeat(3,1fr);">
     <div class="kc or"><div class="ki">📦</div><div class="kv" id="kTotal">-</div><div class="kl">Total servicios</div></div>
     <div class="kc gr"><div class="ki">✅</div><div class="kv" id="kFin">-</div><div class="kl">Finalizados</div><div class="ksub" id="kFinPct">-</div></div>
     <div class="kc re"><div class="ki">✖</div><div class="kv" id="kCanc">-</div><div class="kl">Cancelados</div><div class="ksub" id="kCancPct">-</div></div>
-    <div class="kc go"><div class="ki">💰</div><div class="kv" id="kIngresos">-</div><div class="kl">Ingresos totales</div></div>
-    <div class="kc pu"><div class="ki">📈</div><div class="kv" id="kGanancias">-</div><div class="kl">Ganancias totales</div></div>
   </div>
 
   <div class="kg">
@@ -144,7 +142,7 @@
   <div class="c2">
     <div class="cc">
       <div class="ct">
-        <span class="ct-l"><span class="dot"></span>Top 10 trabajadores por volumen</span>
+        <span class="ct-l"><span class="dot"></span>Top 20 Quickers por volumen (histórico)</span>
         <span class="toggles" id="trabToggle">
           <button class="tbtn active" data-o="v">Barras</button>
           <button class="tbtn" data-o="h">Horizontal</button>

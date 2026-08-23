@@ -40,15 +40,42 @@ function fmtDate(d){
   return d.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+
          d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
 }
-function isoWeekLabel(d){
-  const t = new Date(d.getTime());
-  t.setHours(0,0,0,0);
-  t.setDate(t.getDate() + 3 - ((t.getDay()+6)%7));
-  const week1 = new Date(t.getFullYear(),0,4);
-  const wk = 1 + Math.round(((t-week1)/86400000 - 3 + ((week1.getDay()+6)%7))/7);
-  return `${t.getFullYear()}-S${String(wk).padStart(2,'0')}`;
+// Fecha local en formato YYYY-MM-DD (evitar toISOString: convierte a UTC y
+// puede correr el dia en zonas horarias negativas como Colombia).
+function dayKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
-function dayKey(d){return d.toISOString().slice(0,10);}
+
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// Semanas del proyecto: Semana 1 inicia el 19 de mayo de 2026 (fecha de arranque,
+// un martes) y cierra el domingo siguiente; de ahi en adelante semanas completas
+// de lunes a domingo. Fechas anteriores al arranque se agrupan en la Semana 1.
+const PROJECT_START = new Date(2026, 4, 19);
+function projectWeekInfo(d){
+  const clamped = d < PROJECT_START ? PROJECT_START : d;
+  const diffDays = Math.floor((clamped - PROJECT_START) / 86400000);
+  const startDow = PROJECT_START.getDay(); // 0=Dom..6=Sab
+  const daysToFirstSunday = (7 - startDow) % 7;
+  let weekIndex, weekStart, weekEnd;
+  if(diffDays <= daysToFirstSunday){
+    weekIndex = 1;
+    weekStart = PROJECT_START;
+    weekEnd = new Date(PROJECT_START.getTime() + daysToFirstSunday*86400000);
+  } else {
+    const week2Monday = new Date(PROJECT_START.getTime() + (daysToFirstSunday+1)*86400000);
+    const weeksAfter = Math.floor((diffDays - daysToFirstSunday - 1) / 7);
+    weekIndex = 2 + weeksAfter;
+    weekStart = new Date(week2Monday.getTime() + weeksAfter*7*86400000);
+    weekEnd = new Date(weekStart.getTime() + 6*86400000);
+  }
+  return {weekIndex, weekStart, weekEnd};
+}
+function fmtDM(d){return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
+function projectWeekLabel(d){
+  const {weekIndex, weekStart, weekEnd} = projectWeekInfo(d);
+  return `S${weekIndex} · ${fmtDM(weekStart)}–${fmtDM(weekEnd)}`;
+}
 
 /* ---------------- Load data ---------------- */
 function setStatus(msg, cls){
@@ -109,7 +136,40 @@ function onData(rows, sourceLabel){
   const fechas = RAW.map(r=>r.fecha).sort((a,b)=>a-b);
   document.getElementById('fDesde').value = dayKey(fechas[0]);
   document.getElementById('fHasta').value = dayKey(fechas[fechas.length-1]);
+  populateMonthFilter(fechas);
 
+  applyFilters();
+}
+
+/* ---------------- Month filter ---------------- */
+function populateMonthFilter(fechasSorted){
+  const sel = document.getElementById('fMes');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Todos los meses</option>';
+  const seen = new Set();
+  fechasSorted.forEach(f=>{
+    const key = f.getFullYear()+'-'+String(f.getMonth()+1).padStart(2,'0');
+    if(seen.has(key)) return;
+    seen.add(key);
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = MESES_ES[f.getMonth()]+' '+f.getFullYear();
+    sel.appendChild(opt);
+  });
+  if(seen.has(prev)) sel.value = prev;
+}
+
+function applyMonthFilter(){
+  const val = document.getElementById('fMes').value;
+  const fechasAll = RAW.map(r=>r.fecha).sort((a,b)=>a-b);
+  if(!val){
+    document.getElementById('fDesde').value = dayKey(fechasAll[0]);
+    document.getElementById('fHasta').value = dayKey(fechasAll[fechasAll.length-1]);
+  } else {
+    const [y,m] = val.split('-').map(Number);
+    document.getElementById('fDesde').value = dayKey(new Date(y, m-1, 1));
+    document.getElementById('fHasta').value = dayKey(new Date(y, m, 0));
+  }
   applyFilters();
 }
 
@@ -139,7 +199,6 @@ function renderKPIs(){
   const fin = FILTERED.filter(r=>r.estado==='Finalizado');
   const canc = FILTERED.filter(r=>r.estado==='Cancelado');
   const ingresos = FILTERED.reduce((a,r)=>a+r.precioTotal,0);
-  const ganancias = FILTERED.reduce((a,r)=>a+r.ganancias,0);
   const avgKm = n ? FILTERED.reduce((a,r)=>a+r.km,0)/n : 0;
   const avgValorDecl = n ? FILTERED.reduce((a,r)=>a+r.valorDeclarado,0)/n : 0;
   const finConTiempo = fin.filter(r=>r.minFinalizacion>0);
@@ -152,8 +211,6 @@ function renderKPIs(){
   document.getElementById('kFinPct').textContent = n ? (fin.length/n*100).toFixed(1)+'% del total' : '';
   document.getElementById('kCanc').textContent = canc.length.toLocaleString('es-CO');
   document.getElementById('kCancPct').textContent = n ? (canc.length/n*100).toFixed(1)+'% del total' : '';
-  document.getElementById('kIngresos').textContent = fmtCOPk(ingresos);
-  document.getElementById('kGanancias').textContent = fmtCOPk(ganancias);
   document.getElementById('kTiempoEntrega').textContent = fmtMin(avgTiempoEntrega);
   document.getElementById('kKm').textContent = avgKm.toFixed(1)+' km';
   document.getElementById('kTicket').textContent = fmtCOP(avgTicket);
@@ -213,10 +270,10 @@ function renderCharts(){
       plugins:{legend:{position:'bottom',labels:{boxWidth:9,padding:8,font:{size:10.5}}}}}});
   renderKmTable(km, kmColors);
 
-  // Top trabajadores
+  // Top 20 Quickers por volumen historico (todo el proyecto, no aplica filtros de fecha/estado)
   const trabCount = {};
-  FILTERED.forEach(r=>{trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
-  const topTrabSorted = Object.entries(trabCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  RAW.forEach(r=>{trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
+  const topTrabSorted = Object.entries(trabCount).sort((a,b)=>b[1]-a[1]).slice(0,20);
   const topTrab = trabOrientation==='h' ? [...topTrabSorted].reverse() : topTrabSorted;
   mk('chTrabajadores',{type:'bar',data:{labels:topTrab.map(e=>e[0]),datasets:[{data:topTrab.map(e=>e[1]),
     backgroundColor:COLORS.blue,borderRadius:4}]},
@@ -236,10 +293,14 @@ function renderCharts(){
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
       scales:{x:{beginAtZero:true}}}});
 
-  // Ingresos por semana
-  const bySem = {};
-  FILTERED.forEach(r=>{const k=isoWeekLabel(r.fecha); bySem[k]=(bySem[k]||0)+r.precioTotal;});
-  const sems = Object.keys(bySem).sort();
+  // Ingresos por semana (semana de proyecto: lunes-domingo, S1 arranca 19 mayo)
+  const bySem = {}, semOrder = {};
+  FILTERED.forEach(r=>{
+    const info = projectWeekInfo(r.fecha), k = projectWeekLabel(r.fecha);
+    bySem[k] = (bySem[k]||0) + r.precioTotal;
+    semOrder[k] = info.weekIndex;
+  });
+  const sems = Object.keys(bySem).sort((a,b)=>semOrder[a]-semOrder[b]);
   mk('chIngresosSemana',{type:'bar',data:{labels:sems,datasets:[{data:sems.map(s=>bySem[s]),
     backgroundColor:COLORS.navy,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
@@ -390,14 +451,14 @@ function renderAll(){
 }
 
 /* ---------------- Wire up UI ---------------- */
-document.getElementById('fDesde').addEventListener('change', applyFilters);
-document.getElementById('fHasta').addEventListener('change', applyFilters);
+document.getElementById('fMes').addEventListener('change', applyMonthFilter);
 document.getElementById('fEstado').addEventListener('change', applyFilters);
 document.getElementById('fTipo').addEventListener('change', applyFilters);
 document.getElementById('fTrabajador').addEventListener('input', ()=>{
   clearTimeout(window._tdeb); window._tdeb=setTimeout(applyFilters,250);
 });
 document.getElementById('btnClear').addEventListener('click', ()=>{
+  document.getElementById('fMes').value='';
   document.getElementById('fEstado').value='';
   document.getElementById('fTipo').value='';
   document.getElementById('fTrabajador').value='';
