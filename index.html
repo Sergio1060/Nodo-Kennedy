@@ -80,9 +80,9 @@
   </div>
 
   <div class="kg">
-    <div class="kc tl"><div class="ki">⏱️</div><div class="kv" id="kTiempoEntrega">-</div><div class="kl">Tiempo prom. de entrega</div></div>
+    <div class="kc tl"><div class="ki">⏱️</div><div class="kv" id="kTiempoEntrega">-</div><div class="kl">Tiempo de entrega (mediana)</div></div>
     <div class="kc or"><div class="ki">🚗</div><div class="kv" id="kKm">-</div><div class="kl">Km promedio / servicio</div></div>
-    <div class="kc go"><div class="ki">🎫</div><div class="kv" id="kTicket">-</div><div class="kl">Ticket promedio</div></div>
+    <div class="kc go"><div class="ki">🎫</div><div class="kv" id="kTicket">-</div><div class="kl">Ticket (mediana)</div></div>
     <div class="kc go"><div class="ki">🏷️</div><div class="kv" id="kValorDecl">-</div><div class="kl">Valor declarado promedio</div></div>
     <div class="kc pu"><div class="ki">🧍</div><div class="kv" id="kTrabajadores">-</div><div class="kl">Trabajadores activos</div></div>
   </div>
@@ -114,9 +114,9 @@
             <th>Servicios</th>
             <th>% del total</th>
             <th>Km prom.</th>
-            <th>T. asignación</th>
-            <th>T. finalización</th>
-            <th>Ticket prom.</th>
+            <th>T. asignación (mediana)</th>
+            <th>Ciclo total (mediana)</th>
+            <th>Ticket (mediana)</th>
             <th>Facturado</th>
           </tr>
         </thead>
@@ -125,9 +125,28 @@
     </div>
   </div>
 
-  <div class="stl">Tiempos del proceso (promedio)</div>
+  <div class="stl">Tiempos del proceso (mediana)</div>
   <div class="cc">
     <div class="pf" id="pfFlow"></div>
+  </div>
+
+  <div class="stl">Distribución del tiempo de entrega</div>
+  <div class="c2">
+    <div class="cc">
+      <div class="ct"><span class="ct-l"><span class="dot"></span>Servicios finalizados por rango de tiempo</span></div>
+      <div class="cw tall"><canvas id="chTiempo"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="ct"><span class="ct-l"><span class="dot"></span>Detalle por rango de tiempo</span></div>
+      <div class="tbl-wrap">
+        <table class="dt">
+          <thead>
+            <tr><th>Rango</th><th>Servicios</th><th>% del total</th></tr>
+          </thead>
+          <tbody id="tiempoTableBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div class="c2">

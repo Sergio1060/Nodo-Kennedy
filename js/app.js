@@ -31,6 +31,18 @@ function fmtMin(v){
   const h = Math.floor(v/60), m = Math.round(v%60);
   return h>0 ? `${h}h ${m}m` : `${m}m`;
 }
+// Mediana en vez de promedio para los tiempos: un pequeno % de servicios con
+// horas/dias de retraso (probablemente casos atipicos del sistema) inflan
+// muchisimo el promedio simple y no representan el tiempo tipico real.
+function median(arr){
+  if(!arr.length) return 0;
+  const s = [...arr].sort((a,b)=>a-b);
+  const mid = Math.floor(s.length/2);
+  return s.length%2 ? s[mid] : (s[mid-1]+s[mid])/2;
+}
+function medianBy(rows, key){
+  return median(rows.filter(r=>r[key]>0).map(r=>r[key]));
+}
 function fmtDate(d){
   if(!d) return '-';
   return d.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+
@@ -195,22 +207,23 @@ function renderKPIs(){
   const n = FILTERED.length;
   const fin = FILTERED.filter(r=>r.estado==='Finalizado');
   const canc = FILTERED.filter(r=>r.estado==='Cancelado');
-  const ingresos = FILTERED.reduce((a,r)=>a+r.precioTotal,0);
   const avgKm = n ? FILTERED.reduce((a,r)=>a+r.km,0)/n : 0;
   const avgValorDecl = n ? FILTERED.reduce((a,r)=>a+r.valorDeclarado,0)/n : 0;
-  const finConTiempo = fin.filter(r=>r.minFinalizacion>0);
-  const avgTiempoEntrega = finConTiempo.length ? finConTiempo.reduce((a,r)=>a+r.minFinalizacion,0)/finConTiempo.length : 0;
+  const medianTiempoEntrega = medianBy(fin, 'minFinalizacion');
   const trabajadoresActivos = new Set(FILTERED.map(r=>r.trabajador)).size;
-  const avgTicket = n ? ingresos/n : 0;
+  // Mediana, no promedio: un pequeno % de servicios con valor muy alto (mensajeria
+  // con valor declarado alto) y otro % en $0 (cancelados/sin cobro) distorsionan
+  // el promedio simple muy por encima de la tarifa real pactada.
+  const medianTicket = median(FILTERED.map(r=>r.precioTotal));
 
   document.getElementById('kTotal').textContent = n.toLocaleString('es-CO');
   document.getElementById('kFin').textContent = fin.length.toLocaleString('es-CO');
   document.getElementById('kFinPct').textContent = n ? (fin.length/n*100).toFixed(1)+'% del total' : '';
   document.getElementById('kCanc').textContent = canc.length.toLocaleString('es-CO');
   document.getElementById('kCancPct').textContent = n ? (canc.length/n*100).toFixed(1)+'% del total' : '';
-  document.getElementById('kTiempoEntrega').textContent = fmtMin(avgTiempoEntrega);
+  document.getElementById('kTiempoEntrega').textContent = fmtMin(medianTiempoEntrega);
   document.getElementById('kKm').textContent = avgKm.toFixed(1)+' km';
-  document.getElementById('kTicket').textContent = fmtCOP(avgTicket);
+  document.getElementById('kTicket').textContent = fmtCOP(medianTicket);
   document.getElementById('kValorDecl').textContent = fmtCOPk(avgValorDecl);
   document.getElementById('kTrabajadores').textContent = trabajadoresActivos.toLocaleString('es-CO');
 }
@@ -269,6 +282,20 @@ function renderCharts(){
         }}}}}});
   renderKmTable(km, kmColors);
 
+  // Distribucion del tiempo de entrega (segregado por rango, no solo un promedio)
+  const tiempo = tiempoStats();
+  const tiempoColors = [COLORS.green, COLORS.blue, COLORS.blueL, COLORS.gold, COLORS.red];
+  mk('chTiempo',{type:'doughnut',data:{
+    labels:tiempo.map(t=>`${t.label} (${t.pct.toFixed(1)}%)`),
+    datasets:[{data:tiempo.map(t=>t.n),backgroundColor:tiempoColors,borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'56%',
+      plugins:{legend:{position:'bottom',labels:{boxWidth:9,padding:8,font:{size:10.5}}},
+        tooltip:{...TOOLTIP_BASE,callbacks:{label:c=>{
+          const t2=tiempo[c.dataIndex];
+          return `${t2.label}: ${t2.n.toLocaleString('es-CO')} (${t2.pct.toFixed(1)}%)`;
+        }}}}}});
+  renderTiempoTable(tiempo, tiempoColors);
+
   // Top 20 Quickers por volumen historico (todo el proyecto, no aplica filtros de fecha/estado)
   const trabCount = {};
   RAW.forEach(r=>{trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
@@ -319,15 +346,16 @@ function kmStats(){
   const total = FILTERED.length;
   return buckets.map(b=>{
     const rows = FILTERED.filter(r => r.km>=b.min && r.km<=b.max);
+    const finRows = rows.filter(r=>r.estado==='Finalizado');
     const n = rows.length;
     const facturado = rows.reduce((a,r)=>a+r.precioTotal,0);
     return {
       label:b.label, n,
       pct: total ? n/total*100 : 0,
       kmProm: n ? rows.reduce((a,r)=>a+r.km,0)/n : 0,
-      tAsign: n ? rows.reduce((a,r)=>a+r.minAsignado,0)/n : 0,
-      tFin: n ? rows.reduce((a,r)=>a+r.minFinalizacion,0)/n : 0,
-      ticket: n ? facturado/n : 0,
+      tAsign: medianBy(finRows,'minAsignado'),
+      tFin: medianBy(finRows,'minFinalizacion'),
+      ticket: median(rows.map(r=>r.precioTotal)),
       facturado,
     };
   });
@@ -335,6 +363,7 @@ function kmStats(){
 
 function renderKmTable(km, colors){
   const total = FILTERED.length;
+  const finTotal = FILTERED.filter(r=>r.estado==='Finalizado');
   const facturadoTotal = FILTERED.reduce((a,r)=>a+r.precioTotal,0);
   let h = km.map((k,i)=>`
     <tr>
@@ -354,25 +383,60 @@ function renderKmTable(km, colors){
       <td>${total.toLocaleString('es-CO')}</td>
       <td>100%</td>
       <td>${(FILTERED.reduce((a,r)=>a+r.km,0)/total).toFixed(1)} km</td>
-      <td>${(FILTERED.reduce((a,r)=>a+r.minAsignado,0)/total).toFixed(0)} min</td>
-      <td>${(FILTERED.reduce((a,r)=>a+r.minFinalizacion,0)/total).toFixed(0)} min</td>
-      <td>${fmtCOP(facturadoTotal/total)}</td>
+      <td>${medianBy(finTotal,'minAsignado').toFixed(0)} min</td>
+      <td>${medianBy(finTotal,'minFinalizacion').toFixed(0)} min</td>
+      <td>${fmtCOP(median(FILTERED.map(r=>r.precioTotal)))}</td>
       <td>${fmtCOPk(facturadoTotal)}</td>
     </tr>`;
   }
   document.getElementById('kmTableBody').innerHTML = h;
 }
 
+/* ---------------- Tiempo de entrega: distribucion segregada ---------------- */
+function tiempoStats(){
+  const buckets = [
+    {label:'≤ 30 min', min:0, max:30},
+    {label:'31–60 min', min:31, max:60},
+    {label:'1–2 h', min:61, max:120},
+    {label:'2–4 h', min:121, max:240},
+    {label:'4 h+', min:241, max:Infinity},
+  ];
+  const fin = FILTERED.filter(r=>r.estado==='Finalizado' && r.minFinalizacion>0);
+  const total = fin.length;
+  return buckets.map(b=>{
+    const rows = fin.filter(r => r.minFinalizacion>=b.min && r.minFinalizacion<=b.max);
+    return {label:b.label, n:rows.length, pct: total ? rows.length/total*100 : 0};
+  });
+}
+
+function renderTiempoTable(tiempo, colors){
+  const total = tiempo.reduce((a,t)=>a+t.n,0);
+  let h = tiempo.map((t,i)=>`
+    <tr>
+      <td><span class="bd tl">${t.label}</span></td>
+      <td><b>${t.n.toLocaleString('es-CO')}</b></td>
+      <td><div class="pct-bar"><div class="pct-bar-track"><div class="pct-bar-fill" style="width:${Math.min(100,t.pct)}%;background:${colors[i]}"></div></div><span style="font-size:10.5px;font-weight:700;color:${colors[i]}">${t.pct.toFixed(1)}%</span></div></td>
+    </tr>`).join('');
+  if(total){
+    h += `
+    <tr style="background:var(--card-h);font-weight:700;">
+      <td><span class="bd go">TOTAL</span></td>
+      <td>${total.toLocaleString('es-CO')}</td>
+      <td>100%</td>
+    </tr>`;
+  }
+  document.getElementById('tiempoTableBody').innerHTML = h;
+}
+
 /* ---------------- Process flow ---------------- */
 function renderFlow(){
-  const n = FILTERED.length;
-  const avg = key => n ? FILTERED.reduce((a,r)=>a+r[key],0)/n : 0;
-  const ticket = n ? FILTERED.reduce((a,r)=>a+r.precioTotal,0)/n : 0;
+  const fin = FILTERED.filter(r=>r.estado==='Finalizado');
+  const ticket = median(FILTERED.map(r=>r.precioTotal));
   const stages = [
-    {ico:'📋',nm:'Asignación',v:avg('minAsignado').toFixed(0),unit:'min promedio'},
-    {ico:'📍',nm:'1ª Parada',v:avg('minPrimeraParada').toFixed(0),unit:'min promedio'},
-    {ico:'🏁',nm:'Finalización',v:avg('minFinalizacion').toFixed(0),unit:'min promedio'},
-    {ico:'🎫',nm:'Ticket',v:fmtCOP(ticket),unit:'promedio COP',small:true},
+    {ico:'📋',nm:'Asignación',v:medianBy(fin,'minAsignado').toFixed(0),unit:'min (mediana)'},
+    {ico:'📍',nm:'1ª Parada',v:medianBy(fin,'minPrimeraParada').toFixed(0),unit:'min (mediana)'},
+    {ico:'🏁',nm:'Ciclo Total',v:medianBy(fin,'minFinalizacion').toFixed(0),unit:'min (mediana)'},
+    {ico:'🎫',nm:'Ticket',v:fmtCOP(ticket),unit:'mediana COP',small:true},
   ];
   document.getElementById('pfFlow').innerHTML = stages.map(s=>`
     <div class="ps">
