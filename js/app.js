@@ -247,17 +247,31 @@ const TOOLTIP_BASE = {enabled:true, backgroundColor:'rgba(11,42,74,.96)', titleC
   bodyFont:{family:"'Barlow',sans-serif",size:12}, displayColors:true};
 
 function renderCharts(){
-  // Evolución por día
-  const byDay = {};
-  FILTERED.forEach(r=>{const k=dayKey(r.fecha); byDay[k]=(byDay[k]||0)+1;});
-  const days = Object.keys(byDay).sort();
-  mk('chEvol',{type:'line',data:{labels:days,datasets:[{label:'Servicios',data:days.map(d=>byDay[d]),
-    borderColor:COLORS.blue,backgroundColor:'rgba(46,111,206,.12)',fill:true,tension:.3,
-    pointRadius:0,pointHoverRadius:5,pointHitRadius:12,pointBackgroundColor:COLORS.blue}]},
+  // Evolución por día: finalizados (verde) vs cancelados (rojo), apiladas,
+  // para ver el volumen diario y el % de cumplimiento de un vistazo.
+  const byDayFin = {}, byDayCanc = {}, byDayOtro = {};
+  FILTERED.forEach(r=>{
+    const k=dayKey(r.fecha);
+    if(r.estado==='Finalizado') byDayFin[k]=(byDayFin[k]||0)+1;
+    else if(r.estado==='Cancelado') byDayCanc[k]=(byDayCanc[k]||0)+1;
+    else byDayOtro[k]=(byDayOtro[k]||0)+1;
+  });
+  const days = [...new Set([...Object.keys(byDayFin),...Object.keys(byDayCanc),...Object.keys(byDayOtro)])].sort();
+  mk('chEvol',{type:'bar',data:{labels:days,datasets:[
+    {label:'Finalizados',data:days.map(d=>byDayFin[d]||0),backgroundColor:COLORS.green,stack:'s'},
+    {label:'Cancelados',data:days.map(d=>byDayCanc[d]||0),backgroundColor:COLORS.red,stack:'s'},
+  ]},
     options:{responsive:true,maintainAspectRatio:false,
       interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:false},tooltip:{...TOOLTIP_BASE}},
-      scales:{x:{ticks:{maxTicksLimit:10}},y:{beginAtZero:true,grid:{color:'rgba(11,42,74,.06)'}}}}});
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12}},
+        tooltip:{...TOOLTIP_BASE,callbacks:{footer:items=>{
+          const fin = items.find(i=>i.dataset.label==='Finalizados')?.parsed.y||0;
+          const canc = items.find(i=>i.dataset.label==='Cancelados')?.parsed.y||0;
+          const tot = fin+canc;
+          return tot ? `Cumplimiento: ${(fin/tot*100).toFixed(1)}%` : '';
+        }}}},
+      scales:{x:{stacked:true,ticks:{maxTicksLimit:10}},
+        y:{stacked:true,beginAtZero:true,grid:{color:'rgba(11,42,74,.06)'}}}}});
 
   // Estado
   const fin = FILTERED.filter(r=>r.estado==='Finalizado').length;
