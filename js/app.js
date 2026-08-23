@@ -1,7 +1,10 @@
 /* ============ Colsubsidio · Nodo Kennedy · BI Operativo (Quick Go) ============ */
 
 const COLORS = {navy:'#0B2A4A',blue:'#2E6FCE',blueL:'#6FA8E0',blueXl:'#AFD0F0',
-  gold:'#F0A500',red:'#E4572E',green:'#1FAE6E',muted:'#6B7A90'};
+  red:'#E4572E',green:'#1FAE6E',muted:'#6B7A90'};
+// Gradiente de un solo color (azul oscuro -> claro) para graficas categoricas
+// neutrales; rojo/verde quedan reservados para Finalizado/Cancelado.
+const BLUES = ['#0B2A4A','#1E4E82','#2E6FCE','#7FB0E8','#C5DFF8'];
 let trabOrientation = 'v';
 
 let RAW = [];        // cleaned rows straight from CSV
@@ -290,7 +293,7 @@ function renderCharts(){
 
   // Rango de km (con porcentajes) + tabla de detalle
   const km = kmStats();
-  const kmColors = [COLORS.blue, COLORS.blueL, COLORS.gold, COLORS.navy];
+  const kmColors = BLUES.slice(0, 4);
   mk('chKm',{type:'doughnut',data:{
     labels:km.map((k,i)=>`${k.label} (${k.pct.toFixed(1)}%)`),
     datasets:[{data:km.map(k=>k.n),backgroundColor:kmColors,borderWidth:0,hoverOffset:6}]},
@@ -304,7 +307,7 @@ function renderCharts(){
 
   // Distribucion del tiempo de entrega (segregado por rango, no solo un promedio)
   const tiempo = tiempoStats();
-  const tiempoColors = [COLORS.green, COLORS.blue, COLORS.blueL, COLORS.gold, COLORS.red];
+  const tiempoColors = BLUES;
   mk('chTiempo',{type:'doughnut',data:{
     labels:tiempo.map(t=>`${t.label} (${t.pct.toFixed(1)}%)`),
     datasets:[{data:tiempo.map(t=>t.n),backgroundColor:tiempoColors,borderWidth:0,hoverOffset:6}]},
@@ -335,7 +338,7 @@ function renderCharts(){
   });
   const topCanc = Object.entries(cancCount).sort((a,b)=>b[1]-a[1]).slice(0,8).reverse();
   mk('chCancel',{type:'bar',data:{labels:topCanc.map(e=>e[0]),datasets:[{data:topCanc.map(e=>e[1]),
-    backgroundColor:COLORS.red,borderRadius:4}]},
+    backgroundColor:COLORS.blue,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
       plugins:{legend:{display:false},tooltip:{...TOOLTIP_BASE}},
       scales:{x:{beginAtZero:true}}}});
