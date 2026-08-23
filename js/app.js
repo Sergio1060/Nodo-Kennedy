@@ -1,7 +1,9 @@
 /* ============ Colsubsidio · Nodo Kennedy · BI Operativo (Quick Go) ============ */
 
-const COLORS = {orange:'#C55A11',orange2:'#E06520',gold:'#F0A500',teal:'#00B4C8',
-  green:'#00C87A',red:'#E03030',purple:'#9B5DE5',muted:'#7B8FA8'};
+const COLORS = {navy:'#0B2A4A',blue:'#2E6FCE',blueL:'#6FA8E0',blueXl:'#AFD0F0',
+  gold:'#F0A500',red:'#E4572E',green:'#1FAE6E',muted:'#6B7A90'};
+const BLUES = ['#0B2A4A','#1E4E82','#2E6FCE','#5C93DE','#8EC1EA','#B7D9F4'];
+let trabOrientation = 'v';
 
 let RAW = [];        // cleaned rows straight from CSV
 let FILTERED = [];   // rows after applying filters
@@ -97,11 +99,14 @@ function onData(rows, sourceLabel){
 
   document.getElementById('emptyState').style.display='none';
   document.getElementById('dashboard').style.display='block';
+  document.getElementById('ctxBar').style.display='flex';
   setStatus(`✓ ${RAW.length.toLocaleString('es-CO')} servicios cargados — ${sourceLabel}`, 'ok');
 
+  const now = new Date();
+  document.getElementById('updatedLabel').textContent =
+    'Actualizado ' + now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+
   const fechas = RAW.map(r=>r.fecha).sort((a,b)=>a-b);
-  document.getElementById('periodLabel').textContent =
-    `${fmtDate(fechas[0]).split(' ')[0]} — ${fmtDate(fechas[fechas.length-1]).split(' ')[0]}`;
   document.getElementById('fDesde').value = dayKey(fechas[0]);
   document.getElementById('fHasta').value = dayKey(fechas[fechas.length-1]);
 
@@ -157,10 +162,9 @@ function renderKPIs(){
 /* ---------------- Charts ---------------- */
 function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function mk(id,cfg){dc(id);const el=document.getElementById(id);if(!el)return;charts[id]=new Chart(el,cfg);}
-const CD_TEXT = '#7B8FA8';
-Chart.defaults.color = CD_TEXT;
+Chart.defaults.color = COLORS.muted;
 Chart.defaults.font.family = "'Barlow',sans-serif";
-Chart.defaults.borderColor = 'rgba(255,255,255,.06)';
+Chart.defaults.borderColor = 'rgba(11,42,74,.08)';
 
 function renderCharts(){
   // Evolución por día
@@ -168,16 +172,16 @@ function renderCharts(){
   FILTERED.forEach(r=>{const k=dayKey(r.fecha); byDay[k]=(byDay[k]||0)+1;});
   const days = Object.keys(byDay).sort();
   mk('chEvol',{type:'line',data:{labels:days,datasets:[{label:'Servicios',data:days.map(d=>byDay[d]),
-    borderColor:COLORS.orange,backgroundColor:'rgba(197,90,17,.15)',fill:true,tension:.3,pointRadius:0}]},
+    borderColor:COLORS.blue,backgroundColor:'rgba(46,111,206,.12)',fill:true,tension:.3,pointRadius:0}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{ticks:{maxTicksLimit:10}},y:{beginAtZero:true}}}});
+      scales:{x:{ticks:{maxTicksLimit:10}},y:{beginAtZero:true,grid:{color:'rgba(11,42,74,.06)'}}}}});
 
   // Estado
   const fin = FILTERED.filter(r=>r.estado==='Finalizado').length;
   const canc = FILTERED.filter(r=>r.estado==='Cancelado').length;
   const otros = FILTERED.length - fin - canc;
   const estadoLabels=['Finalizado','Cancelado']; const estadoData=[fin,canc]; const estadoColors=[COLORS.green,COLORS.red];
-  if(otros>0){estadoLabels.push('Otro');estadoData.push(otros);estadoColors.push(COLORS.muted);}
+  if(otros>0){estadoLabels.push('Otro');estadoData.push(otros);estadoColors.push(COLORS.blueXl);}
   mk('chEstado',{type:'doughnut',data:{labels:estadoLabels,datasets:[{data:estadoData,backgroundColor:estadoColors,borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12}}}}});
 
@@ -185,7 +189,7 @@ function renderCharts(){
   const tipoCount = {};
   FILTERED.forEach(r=>{const t=r.tipo||'Sin dato'; tipoCount[t]=(tipoCount[t]||0)+1;});
   mk('chTipo',{type:'doughnut',data:{labels:Object.keys(tipoCount),datasets:[{data:Object.values(tipoCount),
-    backgroundColor:[COLORS.teal,COLORS.orange,COLORS.purple,COLORS.gold],borderWidth:0}]},
+    backgroundColor:BLUES,borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}}}}});
 
   // Método de pago
@@ -193,7 +197,7 @@ function renderCharts(){
   FILTERED.forEach(r=>{pagoCount[r.metodoPago]=(pagoCount[r.metodoPago]||0)+1;});
   const pagoEntries = Object.entries(pagoCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
   mk('chPago',{type:'bar',data:{labels:pagoEntries.map(e=>e[0]),datasets:[{data:pagoEntries.map(e=>e[1]),
-    backgroundColor:COLORS.teal,borderRadius:4}]},
+    backgroundColor:pagoEntries.map((_,i)=>BLUES[i%BLUES.length]),borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
       scales:{x:{beginAtZero:true}}}});
 
@@ -203,17 +207,19 @@ function renderCharts(){
     if(r.km<=4) kmBuckets[0]++; else if(r.km<=10) kmBuckets[1]++; else if(r.km<=20) kmBuckets[2]++; else kmBuckets[3]++;
   });
   mk('chKm',{type:'bar',data:{labels:['0–4 km','5–10 km','11–20 km','21 km+'],datasets:[{data:kmBuckets,
-    backgroundColor:[COLORS.green,COLORS.teal,COLORS.gold,COLORS.purple],borderRadius:4}]},
+    backgroundColor:[COLORS.navy,COLORS.blue,COLORS.blueL,COLORS.blueXl],borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
 
   // Top trabajadores
   const trabCount = {};
   FILTERED.forEach(r=>{trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
-  const topTrab = Object.entries(trabCount).sort((a,b)=>b[1]-a[1]).slice(0,10).reverse();
+  const topTrabSorted = Object.entries(trabCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const topTrab = trabOrientation==='h' ? [...topTrabSorted].reverse() : topTrabSorted;
   mk('chTrabajadores',{type:'bar',data:{labels:topTrab.map(e=>e[0]),datasets:[{data:topTrab.map(e=>e[1]),
-    backgroundColor:COLORS.orange,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
-      scales:{x:{beginAtZero:true}}}});
+    backgroundColor:COLORS.blue,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:trabOrientation==='h'?'y':'x',
+      plugins:{legend:{display:false}},
+      scales:trabOrientation==='h'?{x:{beginAtZero:true}}:{y:{beginAtZero:true},x:{ticks:{maxRotation:60,minRotation:60}}}}});
 
   // Motivos de cancelación
   const cancCount = {};
@@ -232,7 +238,7 @@ function renderCharts(){
   FILTERED.forEach(r=>{const k=isoWeekLabel(r.fecha); bySem[k]=(bySem[k]||0)+r.precioTotal;});
   const sems = Object.keys(bySem).sort();
   mk('chIngresosSemana',{type:'bar',data:{labels:sems,datasets:[{data:sems.map(s=>bySem[s]),
-    backgroundColor:COLORS.gold,borderRadius:4}]},
+    backgroundColor:COLORS.navy,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
       tooltip:{callbacks:{label:c=>fmtCOP(c.parsed.y)}}},scales:{y:{ticks:{callback:v=>fmtCOPk(v)}}}}});
 }
@@ -293,8 +299,31 @@ function renderTable(){
   document.getElementById('pagerNext').disabled = page>=totalPages;
 }
 
+function renderContext(){
+  if(!FILTERED.length){
+    document.getElementById('ctxPeriodo').textContent = 'Sin datos';
+    document.getElementById('ctxTrabajador').textContent = '-';
+    document.getElementById('ctxPago').textContent = '-';
+    return;
+  }
+  const fechas = FILTERED.map(r=>r.fecha).sort((a,b)=>a-b);
+  document.getElementById('ctxPeriodo').textContent =
+    `${fmtDate(fechas[0]).split(' ')[0]} → ${fmtDate(fechas[fechas.length-1]).split(' ')[0]}`;
+
+  const trabCount = {};
+  FILTERED.forEach(r=>{trabCount[r.trabajador]=(trabCount[r.trabajador]||0)+1;});
+  const topTrab = Object.entries(trabCount).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('ctxTrabajador').textContent = topTrab ? `${topTrab[0]} (${topTrab[1]})` : '-';
+
+  const pagoCount = {};
+  FILTERED.forEach(r=>{pagoCount[r.metodoPago]=(pagoCount[r.metodoPago]||0)+1;});
+  const topPago = Object.entries(pagoCount).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('ctxPago').textContent = topPago ? topPago[0] : '-';
+}
+
 function renderAll(){
   renderKPIs();
+  renderContext();
   renderCharts();
   renderFlow();
   renderTable();
@@ -318,6 +347,13 @@ document.getElementById('btnClear').addEventListener('click', ()=>{
     document.getElementById('fHasta').value = dayKey(fechas[fechas.length-1]);
   }
   applyFilters();
+});
+document.querySelectorAll('#trabToggle .tbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    trabOrientation = btn.dataset.o;
+    document.querySelectorAll('#trabToggle .tbtn').forEach(b=>b.classList.toggle('active', b===btn));
+    renderCharts();
+  });
 });
 document.getElementById('pagerPrev').addEventListener('click', ()=>{page--; renderTable();});
 document.getElementById('pagerNext').addEventListener('click', ()=>{page++; renderTable();});

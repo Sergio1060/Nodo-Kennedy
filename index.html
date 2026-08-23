@@ -13,19 +13,20 @@
 
 <header class="sh">
   <div class="logo">
-    <div class="logo-badge">Q</div>
+    <div class="logo-badge">⚡</div>
     <div class="logo-text">
-      <div class="client">Colsubsidio · Nodo Kennedy</div>
-      <div class="sub">Quick Go · BI Operativo</div>
+      <div class="client">Quick</div>
+      <div class="sub">Tablero Operativo · Colsubsidio · Nodo Kennedy</div>
     </div>
   </div>
   <div class="hm">
-    <div class="period" id="periodLabel">Sin datos cargados</div>
-    <div class="stitle">Indicadores de Servicio</div>
+    <div class="period" id="updatedLabel">Sin datos cargados</div>
+    <span class="livepill"><span class="dot"></span>En vivo</span>
   </div>
 </header>
 
 <div class="fbar">
+  <span class="flabel">Filtrar</span>
   <div class="ffield">
     <label>Desde</label>
     <input type="date" id="fDesde">
@@ -54,13 +55,19 @@
     <label>Trabajador</label>
     <input type="text" id="fTrabajador" placeholder="Buscar nombre...">
   </div>
-  <button class="fbtn" id="btnClear">Limpiar filtros</button>
+  <button class="fbtn" id="btnClear">↺ Limpiar</button>
   <div class="fspacer"></div>
   <div class="upload-wrap">
     <span id="dataStatus">Cargando datos por defecto...</span>
     <label class="fbtn primary upload-label" for="fileInput">⭱ Actualizar data (CSV)</label>
     <input type="file" id="fileInput" accept=".csv">
   </div>
+</div>
+
+<div class="ctxbar" id="ctxBar" style="display:none;">
+  <span class="ctxi"><span class="ico">📅</span>Periodo: <b id="ctxPeriodo">-</b></span>
+  <span class="ctxi"><span class="ico">🏆</span>Trabajador líder: <b id="ctxTrabajador">-</b></span>
+  <span class="ctxi"><span class="ico">💳</span>Método líder: <b id="ctxPago">-</b></span>
 </div>
 
 <main class="sb" id="dashboard" style="display:none;">
@@ -83,26 +90,26 @@
   <div class="stl">Evolución y distribución</div>
   <div class="c2">
     <div class="cc">
-      <div class="ct">Servicios por día</div>
+      <div class="ct"><span class="ct-l"><span class="dot"></span>Servicios por día</span></div>
       <div class="cw tall"><canvas id="chEvol"></canvas></div>
     </div>
     <div class="cc">
-      <div class="ct">Estado del servicio</div>
+      <div class="ct"><span class="ct-l"><span class="dot"></span>Estado del servicio</span></div>
       <div class="cw tall"><canvas id="chEstado"></canvas></div>
     </div>
   </div>
 
   <div class="c3">
     <div class="cc">
-      <div class="ct">Tipo de servicio</div>
+      <div class="ct"><span class="ct-l"><span class="dot"></span>Tipo de servicio</span></div>
       <div class="cw"><canvas id="chTipo"></canvas></div>
     </div>
     <div class="cc">
-      <div class="ct">Método de pago</div>
+      <div class="ct"><span class="ct-l"><span class="dot"></span>Método de pago</span></div>
       <div class="cw"><canvas id="chPago"></canvas></div>
     </div>
     <div class="cc">
-      <div class="ct">Distancia por rango (km)</div>
+      <div class="ct"><span class="ct-l"><span class="dot"></span>Distancia por rango (km)</span></div>
       <div class="cw"><canvas id="chKm"></canvas></div>
     </div>
   </div>
@@ -114,11 +121,17 @@
 
   <div class="c2">
     <div class="cc">
-      <div class="ct">Top 10 trabajadores por volumen</div>
+      <div class="ct">
+        <span class="ct-l"><span class="dot"></span>Top 10 trabajadores por volumen</span>
+        <span class="toggles" id="trabToggle">
+          <button class="tbtn active" data-o="v">Barras</button>
+          <button class="tbtn" data-o="h">Horizontal</button>
+        </span>
+      </div>
       <div class="cw tall"><canvas id="chTrabajadores"></canvas></div>
     </div>
     <div class="cc">
-      <div class="ct">Motivos de cancelación</div>
+      <div class="ct"><span class="ct-l"><span class="dot"></span>Motivos de cancelación</span></div>
       <div class="cw tall"><canvas id="chCancel"></canvas></div>
     </div>
   </div>
