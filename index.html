@@ -80,9 +80,10 @@
     <div class="kc pu"><div class="ki">📈</div><div class="kv" id="kGanancias">-</div><div class="kl">Ganancias totales</div></div>
   </div>
 
-  <div class="kg" style="grid-template-columns:repeat(4,1fr);">
+  <div class="kg">
     <div class="kc tl"><div class="ki">⏱️</div><div class="kv" id="kTiempoEntrega">-</div><div class="kl">Tiempo prom. de entrega</div></div>
     <div class="kc or"><div class="ki">🚗</div><div class="kv" id="kKm">-</div><div class="kl">Km promedio / servicio</div></div>
+    <div class="kc go"><div class="ki">🎫</div><div class="kv" id="kTicket">-</div><div class="kl">Ticket promedio</div></div>
     <div class="kc go"><div class="ki">🏷️</div><div class="kv" id="kValorDecl">-</div><div class="kl">Valor declarado promedio</div></div>
     <div class="kc pu"><div class="ki">🧍</div><div class="kv" id="kTrabajadores">-</div><div class="kl">Trabajadores activos</div></div>
   </div>
@@ -111,6 +112,27 @@
     <div class="cc">
       <div class="ct"><span class="ct-l"><span class="dot"></span>Distancia por rango (km)</span></div>
       <div class="cw"><canvas id="chKm"></canvas></div>
+    </div>
+  </div>
+
+  <div class="stl">Detalle por rango de distancia</div>
+  <div class="cc">
+    <div class="tbl-wrap">
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>Rango</th>
+            <th>Servicios</th>
+            <th>% del total</th>
+            <th>Km prom.</th>
+            <th>T. asignación</th>
+            <th>T. finalización</th>
+            <th>Ticket prom.</th>
+            <th>Facturado</th>
+          </tr>
+        </thead>
+        <tbody id="kmTableBody"></tbody>
+      </table>
     </div>
   </div>
 

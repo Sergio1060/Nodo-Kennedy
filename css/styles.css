@@ -125,6 +125,11 @@ body{display:flex;flex-direction:column;}
 .ps-val{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;line-height:1;color:var(--navy);}
 .ps-unit{font-size:8.5px;color:var(--muted);}
 
+/* ---------- Pct bar (inside table cells) ---------- */
+.pct-bar{display:flex;align-items:center;gap:7px;min-width:110px;}
+.pct-bar-track{flex:1;background:rgba(11,42,74,.08);border-radius:3px;height:8px;overflow:hidden;}
+.pct-bar-fill{height:100%;border-radius:3px;}
+
 /* ---------- Table ---------- */
 .tbl-wrap{overflow-x:auto;}
 .dt{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}

@@ -145,6 +145,7 @@ function renderKPIs(){
   const finConTiempo = fin.filter(r=>r.minFinalizacion>0);
   const avgTiempoEntrega = finConTiempo.length ? finConTiempo.reduce((a,r)=>a+r.minFinalizacion,0)/finConTiempo.length : 0;
   const trabajadoresActivos = new Set(FILTERED.map(r=>r.trabajador)).size;
+  const avgTicket = n ? ingresos/n : 0;
 
   document.getElementById('kTotal').textContent = n.toLocaleString('es-CO');
   document.getElementById('kFin').textContent = fin.length.toLocaleString('es-CO');
@@ -155,6 +156,7 @@ function renderKPIs(){
   document.getElementById('kGanancias').textContent = fmtCOPk(ganancias);
   document.getElementById('kTiempoEntrega').textContent = fmtMin(avgTiempoEntrega);
   document.getElementById('kKm').textContent = avgKm.toFixed(1)+' km';
+  document.getElementById('kTicket').textContent = fmtCOP(avgTicket);
   document.getElementById('kValorDecl').textContent = fmtCOPk(avgValorDecl);
   document.getElementById('kTrabajadores').textContent = trabajadoresActivos.toLocaleString('es-CO');
 }
@@ -201,14 +203,15 @@ function renderCharts(){
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
       scales:{x:{beginAtZero:true}}}});
 
-  // Rango de km
-  const kmBuckets=[0,0,0,0]; // 0-4,5-10,11-20,21+
-  FILTERED.forEach(r=>{
-    if(r.km<=4) kmBuckets[0]++; else if(r.km<=10) kmBuckets[1]++; else if(r.km<=20) kmBuckets[2]++; else kmBuckets[3]++;
-  });
-  mk('chKm',{type:'bar',data:{labels:['0–4 km','5–10 km','11–20 km','21 km+'],datasets:[{data:kmBuckets,
-    backgroundColor:[COLORS.navy,COLORS.blue,COLORS.blueL,COLORS.blueXl],borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  // Rango de km (con porcentajes) + tabla de detalle
+  const km = kmStats();
+  const kmColors = [COLORS.blue, COLORS.blueL, COLORS.gold, COLORS.navy];
+  mk('chKm',{type:'doughnut',data:{
+    labels:km.map((k,i)=>`${k.label} (${k.pct.toFixed(1)}%)`),
+    datasets:[{data:km.map(k=>k.n),backgroundColor:kmColors,borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'56%',
+      plugins:{legend:{position:'bottom',labels:{boxWidth:9,padding:8,font:{size:10.5}}}}}});
+  renderKmTable(km, kmColors);
 
   // Top trabajadores
   const trabCount = {};
@@ -243,21 +246,78 @@ function renderCharts(){
       tooltip:{callbacks:{label:c=>fmtCOP(c.parsed.y)}}},scales:{y:{ticks:{callback:v=>fmtCOPk(v)}}}}});
 }
 
+/* ---------------- KM breakdown ---------------- */
+function kmStats(){
+  const buckets = [
+    {label:'0–4 km', min:0, max:4},
+    {label:'5–10 km', min:5, max:10},
+    {label:'11–20 km', min:11, max:20},
+    {label:'21 km+', min:21, max:Infinity},
+  ];
+  const total = FILTERED.length;
+  return buckets.map(b=>{
+    const rows = FILTERED.filter(r => r.km>=b.min && r.km<=b.max);
+    const n = rows.length;
+    const facturado = rows.reduce((a,r)=>a+r.precioTotal,0);
+    return {
+      label:b.label, n,
+      pct: total ? n/total*100 : 0,
+      kmProm: n ? rows.reduce((a,r)=>a+r.km,0)/n : 0,
+      tAsign: n ? rows.reduce((a,r)=>a+r.minAsignado,0)/n : 0,
+      tFin: n ? rows.reduce((a,r)=>a+r.minFinalizacion,0)/n : 0,
+      ticket: n ? facturado/n : 0,
+      facturado,
+    };
+  });
+}
+
+function renderKmTable(km, colors){
+  const total = FILTERED.length;
+  const facturadoTotal = FILTERED.reduce((a,r)=>a+r.precioTotal,0);
+  let h = km.map((k,i)=>`
+    <tr>
+      <td><span class="bd tl">${k.label}</span></td>
+      <td><b>${k.n.toLocaleString('es-CO')}</b></td>
+      <td><div class="pct-bar"><div class="pct-bar-track"><div class="pct-bar-fill" style="width:${Math.min(100,k.pct)}%;background:${colors[i]}"></div></div><span style="font-size:10.5px;font-weight:700;color:${colors[i]}">${k.pct.toFixed(1)}%</span></div></td>
+      <td>${k.kmProm.toFixed(1)} km</td>
+      <td>${k.tAsign.toFixed(0)} min</td>
+      <td>${k.tFin.toFixed(0)} min</td>
+      <td><b>${fmtCOP(k.ticket)}</b></td>
+      <td>${fmtCOPk(k.facturado)}</td>
+    </tr>`).join('');
+  if(total){
+    h += `
+    <tr style="background:var(--card-h);font-weight:700;">
+      <td><span class="bd go">TOTAL</span></td>
+      <td>${total.toLocaleString('es-CO')}</td>
+      <td>100%</td>
+      <td>${(FILTERED.reduce((a,r)=>a+r.km,0)/total).toFixed(1)} km</td>
+      <td>${(FILTERED.reduce((a,r)=>a+r.minAsignado,0)/total).toFixed(0)} min</td>
+      <td>${(FILTERED.reduce((a,r)=>a+r.minFinalizacion,0)/total).toFixed(0)} min</td>
+      <td>${fmtCOP(facturadoTotal/total)}</td>
+      <td>${fmtCOPk(facturadoTotal)}</td>
+    </tr>`;
+  }
+  document.getElementById('kmTableBody').innerHTML = h;
+}
+
 /* ---------------- Process flow ---------------- */
 function renderFlow(){
   const n = FILTERED.length;
   const avg = key => n ? FILTERED.reduce((a,r)=>a+r[key],0)/n : 0;
+  const ticket = n ? FILTERED.reduce((a,r)=>a+r.precioTotal,0)/n : 0;
   const stages = [
-    {ico:'📋',nm:'Asignación',v:avg('minAsignado')},
-    {ico:'📍',nm:'1ª Parada',v:avg('minPrimeraParada')},
-    {ico:'🏁',nm:'Finalización',v:avg('minFinalizacion')},
+    {ico:'📋',nm:'Asignación',v:avg('minAsignado').toFixed(0),unit:'min promedio'},
+    {ico:'📍',nm:'1ª Parada',v:avg('minPrimeraParada').toFixed(0),unit:'min promedio'},
+    {ico:'🏁',nm:'Finalización',v:avg('minFinalizacion').toFixed(0),unit:'min promedio'},
+    {ico:'🎫',nm:'Ticket',v:fmtCOP(ticket),unit:'promedio COP',small:true},
   ];
   document.getElementById('pfFlow').innerHTML = stages.map(s=>`
     <div class="ps">
       <div class="ps-ico">${s.ico}</div>
       <div class="ps-nm">${s.nm}</div>
-      <div class="ps-val">${s.v.toFixed(0)}</div>
-      <div class="ps-unit">min promedio</div>
+      <div class="ps-val"${s.small?' style="font-size:15px"':''}>${s.v}</div>
+      <div class="ps-unit">${s.unit}</div>
     </div>`).join('');
 }
 
