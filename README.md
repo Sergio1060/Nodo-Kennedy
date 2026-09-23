@@ -17,32 +17,54 @@ bi-colsubsidio/
 ├── index.html          # Dashboard (KPIs, gráficas, tabla de detalle)
 ├── css/styles.css       # Estilos, paleta de colores Quick
 ├── js/app.js            # Carga de datos, filtros, gráficas (Chart.js + PapaParse)
+├── js/publicar.js       # Botón "Actualizar data para todos" (publica vía API de GitHub)
 ├── data/data.csv        # Data publicada (solo columnas del dashboard, separada por ";")
 ├── scripts/procesar-data.cjs         # Recorta un export del sistema a data/data.csv
 ├── .github/workflows/actualizar-data.yml  # Procesa y publica cada CSV subido a data/
 └── _devserver.cjs       # Servidor local mínimo solo para previsualizar (no se usa en producción)
 ```
 
-## Cómo actualizar la data (cualquier persona con acceso al repo)
+## Cómo actualizar la data (desde el mismo dashboard)
 
 1. Exporta la data del sistema como CSV (el mismo export de siempre, separado por `;`).
-2. En GitHub entra a la carpeta **`data/`** → **Add file → Upload files**, arrastra el
-   CSV (puede tener cualquier nombre) y pulsa **Commit changes**.
-3. La Action **"Actualizar data del dashboard"** (pestaña *Actions*) se ejecuta sola:
-   - toma el CSV recién subido y lo convierte en `data/data.csv` con solo las
-     columnas del dashboard (sin cédulas, teléfonos, correos ni direcciones),
-   - borra el archivo subido y publica.
-4. En 1–3 minutos todos los que abran el link ven la versión nueva. El dashboard
-   pide `data.csv?v=<hora>`, así que nadie queda con una copia vieja en caché.
-   La etiqueta superior **"Datos al …"** muestra la fecha del último servicio para
-   confirmar que ya se actualizó.
+2. En el dashboard pulsa **"⭱ Actualizar data para todos"**, elige el archivo y pulsa
+   **Publicar**. La primera vez pide un token de GitHub (ver abajo); luego lo recuerda.
+3. El dashboard recorta el archivo **en tu equipo** a las columnas que usa (las
+   cédulas, teléfonos y correos nunca se suben) y lo guarda como `data/data.csv`.
+4. En 1–3 minutos todos los que abran el link ven la versión nueva; el mismo cuadro
+   avisa cuando ya está visible. La etiqueta superior **"Datos al …"** muestra la
+   fecha del último servicio.
 
-Si la Action falla (✗ roja en *Actions*), normalmente es porque el archivo no es el
-export del sistema: el log dice qué columnas faltan. El dashboard sigue mostrando la
-última data válida.
+El botón **"👁 Vista previa (solo aquí)"** carga un CSV solo en tu navegador:
+**no** cambia lo que ven los demás.
 
-El botón **"⭱ Actualizar data (CSV)"** del dashboard sirve solo para una vista
-previa en tu navegador: **no** cambia lo que ven los demás.
+### Token para publicar desde el dashboard
+
+Como el sitio es estático, publicar requiere permiso de escritura sobre este repo.
+Cada persona que vaya a actualizar necesita un token (se crea una sola vez):
+
+1. El dueño del repo invita a la persona: **Settings → Collaborators → Add people**
+   (si es el mismo dueño quien publica, omite este paso).
+2. La persona, con su cuenta de GitHub, entra a
+   **Settings → Developer settings → Personal access tokens → Fine-grained tokens →
+   Generate new token** (https://github.com/settings/personal-access-tokens/new):
+   - *Resource owner*: **Sergio1060** · *Repository access*: **Only select repositories → Nodo-Kennedy**
+   - *Permissions → Repository permissions → Contents*: **Read and write**
+   - *Expiration*: la que prefiera (al vencer, el dashboard vuelve a pedirlo).
+3. Copia el token (`github_pat_…`) y pégalo en el cuadro del dashboard la primera vez.
+   Queda guardado solo en ese navegador; con "Cambiar token" se borra.
+
+Nunca pegues el token en el código ni lo compartas por chat: quien lo tenga puede
+modificar el repositorio.
+
+### Alternativa: subir el archivo directo en GitHub
+
+En GitHub, carpeta **`data/`** → **Add file → Upload files**, arrastra el CSV (con
+cualquier nombre) y **Commit changes**. La Action **"Actualizar data del dashboard"**
+lo recorta, borra el archivo subido y publica. Ojo: por esta vía el export completo
+queda unos minutos en el historial público del repo; es preferible el botón del
+dashboard. Si la Action falla (✗ roja en *Actions*), el log dice qué columnas faltan
+y el dashboard sigue mostrando la última data válida.
 
 ## Previsualizar en local antes de publicar
 

@@ -61,10 +61,9 @@
   <div class="fspacer"></div>
   <div class="upload-wrap">
     <span id="dataStatus">Cargando datos por defecto...</span>
-    <!-- Publicar para todos = subir el CSV a data/ en GitHub (la Action lo procesa).
+    <!-- Publicar para todos: js/publicar.js escribe data/data.csv en el repo via API de GitHub.
          El input local solo previsualiza en este navegador. -->
-    <a class="fbtn primary" href="https://github.com/Sergio1060/Nodo-Kennedy/upload/main/data" target="_blank" rel="noopener"
-       title="Abre GitHub para subir el CSV exportado. En 1-3 minutos lo ven todos.">⭱ Actualizar data para todos</a>
+    <button class="fbtn primary" id="btnPublicar" title="Sube el CSV exportado y publícalo: en 1-3 minutos lo ven todos.">⭱ Actualizar data para todos</button>
     <label class="fbtn upload-label" for="fileInput" title="Carga un CSV solo en este navegador. NO cambia lo que ven los demás.">👁 Vista previa (solo aquí)</label>
     <input type="file" id="fileInput" accept=".csv">
   </div>
@@ -177,6 +176,29 @@
 
 </main>
 
+<div id="pubModal" class="modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pubTitle">
+    <h3 id="pubTitle">Actualizar data para todos</h3>
+    <p class="msub">Selecciona el export del sistema (CSV separado por ";"). Se publica en este dashboard y todos los que abran el link lo ven en 1–3 minutos. Las cédulas, teléfonos y correos se quitan en tu equipo antes de subir.</p>
+    <label class="mfield">Archivo CSV
+      <input type="file" id="pubFile" accept=".csv">
+    </label>
+    <div id="pubTokenWrap">
+      <label class="mfield">Token de GitHub
+        <input type="password" id="pubToken" placeholder="github_pat_..." autocomplete="off">
+      </label>
+      <label class="mchk"><input type="checkbox" id="pubRemember" checked> Recordar en este equipo</label>
+      <p class="mhelp">Solo se pide la primera vez. <a href="https://github.com/Sergio1060/Nodo-Kennedy#token-para-publicar-desde-el-dashboard" target="_blank" rel="noopener">¿Cómo obtenerlo?</a></p>
+    </div>
+    <p id="pubTokenSaved" class="mhelp" hidden>🔑 Token guardado en este equipo · <button type="button" class="linkbtn" id="pubForget">Cambiar token</button></p>
+    <div id="pubMsg" class="mmsg"></div>
+    <div class="mactions">
+      <button type="button" class="fbtn" id="pubCancel">Cerrar</button>
+      <button type="button" class="fbtn primary" id="pubGo">Publicar</button>
+    </div>
+  </div>
+</div>
+
 <div id="emptyState">
   <div class="ico">📊</div>
   <h2>Aún no hay datos cargados</h2>
@@ -186,5 +208,6 @@
 <footer>Quick Go · Dashboard BI Colsubsidio (Nodo Kennedy) · Generado con datos operativos internos</footer>
 
 <script src="js/app.js"></script>
+<script src="js/publicar.js"></script>
 </body>
 </html>
