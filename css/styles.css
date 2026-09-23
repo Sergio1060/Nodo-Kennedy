@@ -46,7 +46,8 @@ body{display:flex;flex-direction:column;}
 .fbtn.primary{background:linear-gradient(135deg,var(--blue),var(--navy2));border-color:transparent;color:#fff;}
 .fbtn.primary:hover{filter:brightness(1.08);}
 .fspacer{flex:1;}
-.upload-wrap{display:flex;align-items:center;gap:10px;}
+.upload-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+a.fbtn{text-decoration:none;display:inline-block;}
 #fileInput{display:none;}
 .upload-label{cursor:pointer;}
 #dataStatus{font-size:11px;color:var(--muted);}

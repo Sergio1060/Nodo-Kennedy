@@ -527,7 +527,7 @@ document.getElementById('fileInput').addEventListener('change', e=>{
   setStatus('Procesando '+file.name+'...');
   Papa.parse(file, {
     header:true, delimiter:';', skipEmptyLines:true, worker:false,
-    complete: res => onData(res.data, file.name+' (cargado manualmente)'),
+    complete: res => onData(res.data, file.name+' — VISTA PREVIA solo en este navegador; para que todos la vean usa "Actualizar data para todos"'),
     error: err => setStatus('Error al leer el archivo: '+err, 'err'),
   });
 });

@@ -61,7 +61,11 @@
   <div class="fspacer"></div>
   <div class="upload-wrap">
     <span id="dataStatus">Cargando datos por defecto...</span>
-    <label class="fbtn primary upload-label" for="fileInput">⭱ Actualizar data (CSV)</label>
+    <!-- Publicar para todos = subir el CSV a data/ en GitHub (la Action lo procesa).
+         El input local solo previsualiza en este navegador. -->
+    <a class="fbtn primary" href="https://github.com/Sergio1060/Nodo-Kennedy/upload/main/data" target="_blank" rel="noopener"
+       title="Abre GitHub para subir el CSV exportado. En 1-3 minutos lo ven todos.">⭱ Actualizar data para todos</a>
+    <label class="fbtn upload-label" for="fileInput" title="Carga un CSV solo en este navegador. NO cambia lo que ven los demás.">👁 Vista previa (solo aquí)</label>
     <input type="file" id="fileInput" accept=".csv">
   </div>
 </div>
@@ -176,7 +180,7 @@
 <div id="emptyState">
   <div class="ico">📊</div>
   <h2>Aún no hay datos cargados</h2>
-  <p>Sube el archivo CSV exportado del sistema (mismo formato de <code>data/data.csv</code>) usando el botón "Actualizar data (CSV)" arriba, o verifica que <code>data/data.csv</code> exista en el repositorio.</p>
+  <p>Sube el archivo CSV exportado del sistema (mismo formato de <code>data/data.csv</code>) usando el botón "Actualizar data para todos" arriba, o verifica que <code>data/data.csv</code> exista en el repositorio.</p>
 </div>
 
 <footer>Quick Go · Dashboard BI Colsubsidio (Nodo Kennedy) · Generado con datos operativos internos</footer>
