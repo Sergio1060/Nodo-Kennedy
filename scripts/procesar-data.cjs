@@ -1,29 +1,25 @@
-// Publica un nuevo export del sistema en el dashboard (GitHub Pages).
+// Convierte un export del sistema en data/data.csv (lo que lee el dashboard).
+// Lo ejecuta automaticamente la GitHub Action .github/workflows/actualizar-data.yml
+// cada vez que alguien sube un CSV a la carpeta data/ desde GitHub.
 //
-//   node scripts/actualizar.cjs "C:\ruta\al\export.csv" [--no-push] [--anonimizar]
+//   node scripts/procesar-data.cjs <export.csv> [--anonimizar]
 //
-// 1. Lee el export completo (separado por ";").
-// 2. Escribe data/data.csv SOLO con las columnas que usa el dashboard: el repo es
-//    publico, asi que nunca se suben cedulas, telefonos, correos ni direcciones.
-//    Con --anonimizar tambien reemplaza el nombre del trabajador (Trabajador 001...).
-// 3. Hace commit y push; GitHub Pages publica en 1-2 minutos y, como el dashboard
-//    pide data.csv?v=<timestamp>, todos los que abran el link ven la data nueva.
+// El repo es publico: data/data.csv queda SOLO con las columnas que usa el
+// dashboard, sin cedulas, telefonos, correos ni direcciones.
+// Con --anonimizar tambien reemplaza el nombre del trabajador (Trabajador 001...).
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
 
-const REPO = path.join(__dirname, '..');
-const OUT = path.join(REPO, 'data', 'data.csv');
+const OUT = path.join(__dirname, '..', 'data', 'data.csv');
 const DELIM = ';';
 
 const args = process.argv.slice(2);
-const flags = new Set(args.filter(a => a.startsWith('--')));
 const src = args.find(a => !a.startsWith('--'));
-if(!src){
-  console.error('Uso: node scripts/actualizar.cjs "ruta\\al\\export.csv" [--no-push] [--anonimizar]');
+const anonimizar = args.includes('--anonimizar');
+if(!src || !fs.existsSync(src)){
+  console.error('Uso: node scripts/procesar-data.cjs <export.csv> [--anonimizar]');
   process.exit(1);
 }
-if(!fs.existsSync(src)){ console.error('No existe el archivo: ' + src); process.exit(1); }
 
 // --- Parser RFC4180 minimo (soporta comillas, delimitador y saltos de linea dentro de campos) ---
 function parseCSV(text, delim){
@@ -54,16 +50,20 @@ const KEEP = ['ID Servicio','Total (Km)','Precio Total','Ganancias','Valor Decla
   'Método de Pago','Minutos Tiempo Asignado','Minutos Tiempo Primera Parada',
   'Minutos Tiempo Finalización','Razon de Cancelacion'];
 
-console.log('Leyendo', src);
-const text = fs.readFileSync(src, 'utf8').replace(/^\uFEFF/, '');
-const rows = parseCSV(text, DELIM);
-const header = rows[0].map(h => h.trim());
-const idx = {};
-KEEP.forEach(h => { idx[h] = header.indexOf(h); });
-const missing = KEEP.filter(h => idx[h] === -1);
+// Exports guardados desde Excel suelen venir en ANSI (latin1) en vez de UTF-8:
+// se usa la codificacion con la que aparecen las columnas esperadas.
+const buf = fs.readFileSync(src);
+let rows, idx, missing;
+for(const enc of ['utf8','latin1']){
+  rows = parseCSV(buf.toString(enc).replace(/^﻿/, ''), DELIM);
+  const header = rows[0].map(h => h.trim());
+  idx = {};
+  KEEP.forEach(h => { idx[h] = header.indexOf(h); });
+  missing = KEEP.filter(h => idx[h] === -1);
+  if(!missing.length) break;
+}
 if(missing.length){
-  console.error('El archivo no tiene el formato esperado. Faltan columnas: ' + missing.join(', '));
-  console.error('Verifica que sea el export del sistema separado por ";".');
+  console.error('::error::El archivo no tiene el formato esperado (export separado por ";"). Faltan columnas: ' + missing.join(', '));
   process.exit(1);
 }
 
@@ -74,7 +74,6 @@ function anonWorker(name){
   if(!workerMap.has(key)) workerMap.set(key, 'Trabajador ' + String(workerMap.size+1).padStart(3,'0'));
   return workerMap.get(key);
 }
-const anonimizar = flags.has('--anonimizar');
 
 const outRows = [KEEP];
 let ultima = null, ultimaTxt = '';
@@ -89,24 +88,13 @@ for(let r=1;r<rows.length;r++){
     if(!ultima || d > ultima){ ultima = d; ultimaTxt = `${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}-${m[3]}`; }
   }
 }
-if(outRows.length < 2){ console.error('El archivo no contiene servicios validos.'); process.exit(1); }
+if(outRows.length < 2){ console.error('::error::El archivo no contiene servicios validos.'); process.exit(1); }
 
 function esc(v){
   v = String(v ?? '');
   return /[;"\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
 }
 fs.writeFileSync(OUT, outRows.map(r => r.map(esc).join(DELIM)).join('\n') + '\n', 'utf8');
-console.log(`OK: ${outRows.length-1} servicios, data hasta ${ultimaTxt}` + (anonimizar ? `, ${workerMap.size} trabajadores anonimizados` : ''));
-
-if(flags.has('--no-push')){ console.log('--no-push: data/data.csv actualizado, sin publicar.'); process.exit(0); }
-
-const git = (...a) => execFileSync('git', a, { cwd: REPO, stdio: 'inherit' });
-git('add', 'data/data.csv');
-try {
-  execFileSync('git', ['diff', '--cached', '--quiet'], { cwd: REPO });
-  console.log('La data es identica a la ya publicada; no hay nada que subir.');
-  process.exit(0);
-} catch { /* hay cambios */ }
-git('commit', '-m', `Actualizar data del nodo Kennedy (hasta ${ultimaTxt})`);
-git('push');
-console.log('\nPublicado. En 1-2 minutos se ve en https://sergio1060.github.io/Nodo-Kennedy/');
+console.log(`OK: ${outRows.length-1} servicios, data hasta ${ultimaTxt}`);
+// La Action usa esta linea para el mensaje del commit.
+if(process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `hasta=${ultimaTxt}\n`);

@@ -7,8 +7,8 @@ tomados del informe original `Colsubsidio_Kennedy_Presentacion 34.html`.
 Publicado en: https://sergio1060.github.io/Nodo-Kennedy/
 
 > ⚠️ **Este repo es público.** `data/data.csv` solo debe contener las columnas que
-> usa el dashboard (sin cédulas, teléfonos, correos ni direcciones). Nunca copies el
-> export completo del sistema directamente: usa siempre `ACTUALIZAR DATA.cmd`.
+> usa el dashboard (sin cédulas, teléfonos, correos ni direcciones). La GitHub Action
+> `actualizar-data.yml` recorta automáticamente cualquier export que se suba.
 
 ## Estructura
 
@@ -17,25 +17,29 @@ bi-colsubsidio/
 ├── index.html          # Dashboard (KPIs, gráficas, tabla de detalle)
 ├── css/styles.css       # Estilos, paleta de colores Quick
 ├── js/app.js            # Carga de datos, filtros, gráficas (Chart.js + PapaParse)
-├── data/data.csv        # Data fuente (exportación del sistema, separada por ";")
+├── data/data.csv        # Data publicada (solo columnas del dashboard, separada por ";")
+├── scripts/procesar-data.cjs         # Recorta un export del sistema a data/data.csv
+├── .github/workflows/actualizar-data.yml  # Procesa y publica cada CSV subido a data/
 └── _devserver.cjs       # Servidor local mínimo solo para previsualizar (no se usa en producción)
 ```
 
-## Cómo actualizar la data (para que todos vean lo nuevo)
+## Cómo actualizar la data (cualquier persona con acceso al repo)
 
-1. Exporta la data del sistema como CSV (mismo formato, separado por `;`).
-2. **Arrastra el CSV encima de `ACTUALIZAR DATA.cmd`** (o haz doble clic y elígelo).
-   El script:
-   - deja en `data/data.csv` solo las columnas del dashboard,
-   - hace commit y push a GitHub.
-3. En 1–2 minutos GitHub Pages publica la nueva versión. El dashboard pide
-   `data.csv?v=<hora>`, así que cada persona que abra el link ve la data nueva
-   sin caché. La etiqueta superior muestra **"Datos al …"** con la fecha del
-   último servicio, para confirmar que ya se actualizó.
+1. Exporta la data del sistema como CSV (el mismo export de siempre, separado por `;`).
+2. En GitHub entra a la carpeta **`data/`** → **Add file → Upload files**, arrastra el
+   CSV (puede tener cualquier nombre) y pulsa **Commit changes**.
+3. La Action **"Actualizar data del dashboard"** (pestaña *Actions*) se ejecuta sola:
+   - toma el CSV recién subido y lo convierte en `data/data.csv` con solo las
+     columnas del dashboard (sin cédulas, teléfonos, correos ni direcciones),
+   - borra el archivo subido y publica.
+4. En 1–3 minutos todos los que abran el link ven la versión nueva. El dashboard
+   pide `data.csv?v=<hora>`, así que nadie queda con una copia vieja en caché.
+   La etiqueta superior **"Datos al …"** muestra la fecha del último servicio para
+   confirmar que ya se actualizó.
 
-Desde consola es lo mismo: `node scripts/actualizar.cjs "ruta\export.csv"`
-(opciones: `--no-push` para solo preparar el archivo, `--anonimizar` para
-reemplazar nombres de trabajadores por `Trabajador 001…`).
+Si la Action falla (✗ roja en *Actions*), normalmente es porque el archivo no es el
+export del sistema: el log dice qué columnas faltan. El dashboard sigue mostrando la
+última data válida.
 
 El botón **"⭱ Actualizar data (CSV)"** del dashboard sirve solo para una vista
 previa en tu navegador: **no** cambia lo que ven los demás.

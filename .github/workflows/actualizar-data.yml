@@ -1,0 +1,59 @@
+# Cuando alguien sube un CSV nuevo a la carpeta data/ desde GitHub (Add file ->
+# Upload files), esta Action lo convierte en data/data.csv con solo las columnas
+# del dashboard, borra el archivo subido y publica. Todos los que abran el link
+# ven la version mas reciente en 1-2 minutos.
+name: Actualizar data del dashboard
+
+on:
+  push:
+    branches: [main]
+    paths: ['data/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: actualizar-data
+  cancel-in-progress: false
+
+jobs:
+  procesar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Elegir el archivo subido
+        id: fuente
+        run: |
+          # Si subieron un CSV con otro nombre, se usa el mas reciente; si
+          # reemplazaron data/data.csv directamente, se usa ese.
+          fuente="data/data.csv"; ts=0
+          while IFS= read -r -d '' f; do
+            [ "$f" = "data/data.csv" ] && continue
+            t=$(git log -1 --format=%ct -- "$f")
+            if [ "${t:-0}" -ge "$ts" ]; then ts=$t; fuente="$f"; fi
+          done < <(find data -maxdepth 1 -iname '*.csv' -print0)
+          echo "Archivo fuente: $fuente"
+          cp "$fuente" "$RUNNER_TEMP/export.csv"
+
+      - name: Procesar data
+        id: procesar
+        run: node scripts/procesar-data.cjs "$RUNNER_TEMP/export.csv"
+
+      - name: Publicar
+        run: |
+          find data -maxdepth 1 -iname '*.csv' ! -name 'data.csv' -exec git rm -q --cached {} \; -exec rm -f {} \;
+          git add data/data.csv
+          if git diff --cached --quiet; then
+            echo "data/data.csv ya estaba limpio y actualizado."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Actualizar data del nodo Kennedy (hasta ${{ steps.procesar.outputs.hasta }})"
+          git push
