@@ -97,7 +97,9 @@ function setStatus(msg, cls){
 
 function loadDefault(){
   setStatus('Cargando datos por defecto...');
-  const url = new URL('data/data.csv', document.baseURI).href;
+  // ?v=<timestamp> evita que el navegador o la CDN de GitHub Pages sirvan una
+  // copia vieja del CSV: cada visita trae la ultima version publicada.
+  const url = new URL('data/data.csv?v=' + Date.now(), document.baseURI).href;
   Papa.parse(url, {
     download:true, header:true, delimiter:';', skipEmptyLines:true, worker:false,
     complete: res => onData(res.data, 'data/data.csv (repositorio)'),
@@ -144,11 +146,11 @@ function onData(rows, sourceLabel){
   setStatus(`✓ ${RAW.length.toLocaleString('es-CO')} servicios cargados — ${sourceLabel}` +
     (antesDelArranque ? ` (se excluyeron ${antesDelArranque} previos al 19 may, pre-lanzamiento)` : ''), 'ok');
 
-  const now = new Date();
-  document.getElementById('updatedLabel').textContent =
-    'Actualizado ' + now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
-
   const fechas = RAW.map(r=>r.fecha).sort((a,b)=>a-b);
+  // Mostrar la fecha de corte real de la data (ultimo servicio registrado),
+  // no la hora de apertura de la pagina.
+  document.getElementById('updatedLabel').textContent =
+    'Datos al ' + fmtDate(fechas[fechas.length-1]);
   document.getElementById('fDesde').value = dayKey(fechas[0]);
   document.getElementById('fHasta').value = dayKey(fechas[fechas.length-1]);
   populateMonthFilter(fechas);

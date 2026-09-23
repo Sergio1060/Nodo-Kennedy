@@ -1,27 +1,14 @@
-# BI Colsubsidio · Nodo Kennedy (Quick Go) — repositorio privado (data completa)
+# BI Colsubsidio · Nodo Kennedy (Quick Go)
 
 Dashboard de indicadores operativos para el nodo Kennedy de Colsubsidio. Es un sitio
 100% estático (HTML/CSS/JS), con colores corporativos de Quick (navy + naranja)
 tomados del informe original `Colsubsidio_Kennedy_Presentacion 34.html`.
 
-> ⚠️ **Datos sensibles**: `data/data.csv` contiene nombres, teléfonos, correos y
-> cédulas de trabajadores y del contacto en Colsubsidio. Este repositorio debe
-> mantenerse **privado** siempre.
+Publicado en: https://sergio1060.github.io/Nodo-Kennedy/
 
-## Dos repositorios, un solo dashboard
-
-Como GitHub Pages en cuenta gratuita no permite repos privados, este proyecto vive
-en dos repositorios:
-
-- **Este repo (privado)** — data completa, fuente de verdad. Aquí se actualiza la
-  data cruda cada vez que llega un nuevo export del sistema.
-- **`bi-colsubsidio-public`** — mismo dashboard, pero con `data/data.csv`
-  **anonimizado** (sin nombres, teléfonos, correos ni cédulas; trabajadores
-  reemplazados por códigos tipo `Trabajador 001`). Ese es el repo público con
-  GitHub Pages activado.
-
-El script `scripts/anonymize.cjs` (en este repo) genera la versión pública a partir
-de la data completa — ver instrucciones abajo.
+> ⚠️ **Este repo es público.** `data/data.csv` solo debe contener las columnas que
+> usa el dashboard (sin cédulas, teléfonos, correos ni direcciones). Nunca copies el
+> export completo del sistema directamente: usa siempre `ACTUALIZAR DATA.cmd`.
 
 ## Estructura
 
@@ -34,41 +21,24 @@ bi-colsubsidio/
 └── _devserver.cjs       # Servidor local mínimo solo para previsualizar (no se usa en producción)
 ```
 
-## Cómo actualizar la data
+## Cómo actualizar la data (para que todos vean lo nuevo)
 
-Hay dos formas de cargar datos nuevos, para dos necesidades distintas:
+1. Exporta la data del sistema como CSV (mismo formato, separado por `;`).
+2. **Arrastra el CSV encima de `ACTUALIZAR DATA.cmd`** (o haz doble clic y elígelo).
+   El script:
+   - deja en `data/data.csv` solo las columnas del dashboard,
+   - hace commit y push a GitHub.
+3. En 1–2 minutos GitHub Pages publica la nueva versión. El dashboard pide
+   `data.csv?v=<hora>`, así que cada persona que abra el link ve la data nueva
+   sin caché. La etiqueta superior muestra **"Datos al …"** con la fecha del
+   último servicio, para confirmar que ya se actualizó.
 
-### 1. Vista rápida / puntual (sin tocar GitHub)
-En la barra superior del dashboard, botón **"⭱ Actualizar data (CSV)"** → selecciona
-el nuevo export del sistema (mismo formato, separado por `;`). El dashboard recalcula
-todo al instante, pero **solo en tu navegador** — no cambia lo que ven los demás.
-Útil para revisar un archivo antes de publicarlo.
+Desde consola es lo mismo: `node scripts/actualizar.cjs "ruta\export.csv"`
+(opciones: `--no-push` para solo preparar el archivo, `--anonimizar` para
+reemplazar nombres de trabajadores por `Trabajador 001…`).
 
-### 2. Actualización permanente en este repo privado (respaldo con data completa)
-1. Exporta la data del sistema como CSV (mismo formato de columnas que el actual).
-2. Reemplaza el archivo `data/data.csv` de este repositorio con el nuevo export
-   (debe conservar el nombre `data.csv` y el separador `;`).
-3. Sube el cambio a GitHub:
-   ```bash
-   git add data/data.csv
-   git commit -m "Actualizar data del nodo Kennedy (dd-mm-aaaa)"
-   git push
-   ```
-
-### 3. Publicar esa actualización en el dashboard público (el que ve el equipo)
-1. En este repo, corre:
-   ```bash
-   node scripts/anonymize.cjs
-   ```
-   Esto genera `data/data.public.csv` (sin datos personales, trabajadores anonimizados).
-2. Copia ese archivo a la carpeta `bi-colsubsidio-public` como `data/data.csv`.
-3. Desde `bi-colsubsidio-public`, sube el cambio:
-   ```bash
-   git add data/data.csv
-   git commit -m "Actualizar data anonimizada del nodo Kennedy (dd-mm-aaaa)"
-   git push
-   ```
-4. GitHub Pages se actualiza solo en 1–2 minutos.
+El botón **"⭱ Actualizar data (CSV)"** del dashboard sirve solo para una vista
+previa en tu navegador: **no** cambia lo que ven los demás.
 
 ## Previsualizar en local antes de publicar
 
@@ -83,8 +53,7 @@ Y abre `http://localhost:5173` en el navegador.
 
 ## GitHub Pages
 
-Este repo **no** usa GitHub Pages (debe quedar privado). El dashboard con URL
-pública vive en el repo `bi-colsubsidio-public` — ver su propio README.
+Se publica desde la rama `main` de `Sergio1060/Nodo-Kennedy` (raíz del repo).
 
 ## Indicadores incluidos
 
